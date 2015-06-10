@@ -38,11 +38,11 @@ public class PlayAudio {
 				public void update(LineEvent event) {
 					if(event.getType() == Type.STOP) {
 						clip.close();
-						stopped = true;
+						//stopped = true;
 						System.out.println("Done playing");
-						synchronized (PlayAudio.this) {
-							PlayAudio.this.notify();
-						}
+						//synchronized (PlayAudio.this) {
+						//	PlayAudio.this.notify();
+						//}
 					}
 				}
 			});

@@ -1,8 +1,12 @@
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.util.List;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.LineEvent;
+import javax.sound.sampled.LineEvent.Type;
+import javax.sound.sampled.LineListener;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
@@ -13,20 +17,30 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 	AudioFormat format;
+	CaptureAudio audio;
+	File file;
+	
 	public int[] toIntArray(byte[] bites) {
 		if(format.getSampleSizeInBits() == 16) {
 			int[] array = new int[bites.length / 2];
 			int arrayIndex = 0;
+			int first = 0 ;
+			int second = 1;
+			if(!format.isBigEndian()) {
+				first = 1;
+				second = 0;
+			} 
 			for(int i = 0; i < bites.length - 1; i+=2) {
-				array[arrayIndex] = (bites[i] << 8) | (bites[i + 1] & 0xFF);
+				array[arrayIndex] = (bites[i + first] << 8) | (bites[i + second] & 0xFF);
+				//System.out.print(Integer.toHexString(array[arrayIndex]) + " ");
 				arrayIndex++;
-				System.out.print(Integer.toHexString(array[arrayIndex]) + " ");
 			}
 			return array;
 		} else {
 			int[] array = new int[bites.length];
 			for(int i = 0; i < bites.length; i++) {
 				array[i] = bites[i];
+				System.out.println(array[i] + "  " + bites[i]);
 			}
 			return array;
 		}
@@ -34,8 +48,8 @@ public class Main extends Application {
 	
 	public void initializeFormat() {
 		// Initialize AudioFormat
-		float sampleRate = 2000;//16000;
-		int sampleSizeInBits = 8;//16;
+		float sampleRate = 16000;//16000;
+		int sampleSizeInBits = 16;//16;
 		int channels = 1;
 		boolean signed = true;
 		boolean bigEndian = true;
@@ -43,11 +57,38 @@ public class Main extends Application {
 	}
 	
 	
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({ "unchecked", "rawtypes", "unused" })
 	@Override public void start(Stage stage) {
-
+    	file = new File("capture.wav");
+    	ByteArrayOutputStream stream;
+    	byte[] signalBites;
     	
-    	ByteArrayOutputStream stream = runReadAudio();
+    	if(true) { 
+    		ReadAudioFile audio = new ReadAudioFile(file);
+    		audio.readFile();
+    		stream = audio.getStream();
+    		signalBites = stream.toByteArray();
+    		format = audio.getFormat();
+    	} else {
+	    	initializeFormat();
+	    	//ByteArrayOutputStream stream = runReadAudio();
+	    	startCapture();
+	    	try {
+				Thread.sleep(5000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	    	stopCapture();
+	    	
+	    	//TODO study about Thread.getStackTrace()
+	    	stream = audio.getStream();
+	    	signalBites = stream.toByteArray();
+    	}
+    	
+    	writeToFile(signalBites);
+    	
+    	int[] data = toIntArray(signalBites);
     	
     	
     	
@@ -67,77 +108,64 @@ public class Main extends Application {
         series.setName("Original Line");
 
         //populating the series with data
-        byte[] bites = stream.toByteArray();
-        
-        
-        int start = bites.length / 2;
-        int end = start + 150;//(bites.length * 17) / 32;
+        int start = data.length / 2;
+        int end = start + 300;//(bites.length * 17) / 32;
         for(int i = start; i < end; i++) {
         	//fix for 32 bit
-            series.getData().add(new XYChart.Data((i - start), bites[i]));
+            series.getData().add(new XYChart.Data((i - start), data[i]));
          /*   if(i % 100 == 0)
             	System.out.println((i - start)*2 + " " + bites.length);*/
         }
-        System.out.println("Got here");
- 
-        Scene scene  = new Scene(lineChart,800,600);
         lineChart.getData().add(series);
+        
+        Scene scene  = new Scene(lineChart,800,600);
        
         stage.setScene(scene);
         stage.show();
+        
+    	PlayAudio play = new PlayAudio(signalBites, format);
+    	play.playClip();
     }
-    
-    public ByteArrayOutputStream runReadAudio() {		
-		ReadAudio audio = new ReadAudio();
-		ByteArrayOutputStream stream = audio.getTargetStream();
-		
-		OutputThread myThread = new OutputThread(stream);
-		System.out.println("STARTED");
-		audio.start();
-		myThread.start();
-		
-		//ten seconds
-		try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} finally {
-			audio.stopCapture();
-			System.out.println("STOPPED");
-			
-		/*	byte[] bites = stream.toByteArray();
-			String str;
-			for(byte bite : bites) {
-				str = ((int)bite) + "";
-				//str = String.format("%02X ", bite);
-				//str = String.format("%8s", Integer.toBinaryString(bite & 0xFF)).replace(' ', '0');
-				System.out.print(str + " ");
-			}
-			System.out.println("\n");
-*/			
-			
-			
-			myThread.stopOutput();
-			audio.playClip();
-			try {
-				synchronized (audio) {
-					while (audio.clipPlaying()) {
-			        	 audio.wait();
-			        	 System.out.println("In loop");
-					}
-			     }
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} finally {
-				System.out.println("Done waiting.");
-			}
-		}
-		return stream;
+
+	private void writeToFile(byte[] signalBites) {
+    	WriteAudioFile toFile = new WriteAudioFile(signalBites, format, file);
+    	toFile.start();
 	}
     
- 
+    public void startCapture() {
+    	if(audio == null || audio.isStopped()) {
+	    	try {
+				audio = new CaptureAudio(format,
+						new LineListener() {
+							@Override
+							public void update(LineEvent event) {
+								Type type = event.getType();
+								if (type == Type.CLOSE || type == Type.STOP) {
+									if(!audio.isStopped()) {
+										audio.stopCapture();
+										System.err.println("Audio capture was stopped unexpectedly");
+									}
+								}
+							}
+						});
+				System.out.println("STARTED");
+				audio.start();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} 
+    	} else {
+    		System.err.println("Capture is already in process");
+    	}
+    }
+    
+    public void stopCapture() {
+    	if(audio != null && !audio.isStopped()) {
+    		audio.stopCapture();
+    		System.out.println("STOPPED");
+    	}
+    }
+    
     public static void main(String[] args) {
         launch(args);
     }

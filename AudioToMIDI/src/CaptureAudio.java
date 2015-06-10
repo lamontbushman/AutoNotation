@@ -16,35 +16,50 @@ public class CaptureAudio extends Thread {
 	private boolean stopped = false;
 	private TargetDataLine line;
 	private ByteArrayOutputStream out;
+	private AudioFormat format;
+	private LineListener listener;
 	
-	public CaptureAudio(AudioFormat format) throws Exception {
-		// Open TargetDataLine
+	public CaptureAudio(AudioFormat format, LineListener listener) {
+		this.format = format;
+		this.listener = listener;
+	}
+	
+	private void openTargetDataLine() {
 		DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
 		
 		if(!AudioSystem.isLineSupported(info)) {
-			throw new Exception("DataLine Not Supported\n" + info);
+			try {
+				throw new Exception("DataLine Not Supported\n" + info);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				System.exit(0);
+			}
 		}
 		
 		try {
 			line = (TargetDataLine) AudioSystem.getLine(info);
-			line.addLineListener(new LineListener() {
+			line.addLineListener(listener);
+			//Probably don't need this since a close will end this thread anyway.
+/*			line.addLineListener(new LineListener() {
 				@Override
 				public void update(LineEvent event) {
 					Type type = event.getType();
 					if (type == Type.CLOSE || type == Type.STOP) {
-						//stopped = true;
+						stopped = true;
 					}
 				}
-			});
+			});*/
 			line.open(format); //open(format,bufferSize);
 		} catch(LineUnavailableException ex) {
 			ex.printStackTrace();
-			throw new Exception();
+			System.exit(0);
 		}
 	}
 	
 	@Override
 	public void run() {
+		openTargetDataLine();
 		capture();
 	}
 	
@@ -52,7 +67,11 @@ public class CaptureAudio extends Thread {
 		stopped = true;
 	}
 	
-	public void capture() {
+	public boolean isStopped() {
+		return stopped;
+	}
+	
+	private void capture() {
 		int numBytesRead = 0;
 		/*
 		 * https://docs.oracle.com/javase/tutorial/sound/capturing.html
@@ -70,6 +89,7 @@ public class CaptureAudio extends Thread {
 		// Begin audio capture.
 		line.start();
 		
+		out = new ByteArrayOutputStream();
 		// Here, stopped is a global boolean set by another thread.
 		while (!stopped) {
 			// Read the next chunk of data from the TargetDataLine.
@@ -84,5 +104,9 @@ public class CaptureAudio extends Thread {
 			numBytesRead = line.read(data, 0, dataBufferSize);
 		} while(numBytesRead > 0);
 		line.close();
+	}
+	
+	public ByteArrayOutputStream getStream() {
+		return out;
 	}
 }

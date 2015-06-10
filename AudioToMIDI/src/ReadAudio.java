@@ -309,4 +309,54 @@ class OutputThread extends Thread {
 	public void stopOutput() {
 		stopped = true;
 	}
+	
+    public ByteArrayOutputStream runReadAudio() {		
+		ReadAudio audio = new ReadAudio();
+		ByteArrayOutputStream stream = audio.getTargetStream();
+		
+		OutputThread myThread = new OutputThread(stream);
+		System.out.println("STARTED");
+		audio.start();
+		myThread.start();
+		
+		//ten seconds
+		try {
+			Thread.sleep(5000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+			audio.stopCapture();
+			System.out.println("STOPPED");
+			
+		/*	byte[] bites = stream.toByteArray();
+			String str;
+			for(byte bite : bites) {
+				str = ((int)bite) + "";
+				//str = String.format("%02X ", bite);
+				//str = String.format("%8s", Integer.toBinaryString(bite & 0xFF)).replace(' ', '0');
+				System.out.print(str + " ");
+			}
+			System.out.println("\n");
+*/			
+			
+			
+			myThread.stopOutput();
+			audio.playClip();
+			try {
+				synchronized (audio) {
+					while (audio.clipPlaying()) {
+			        	 audio.wait();
+			        	 System.out.println("In loop");
+					}
+			     }
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} finally {
+				System.out.println("Done waiting.");
+			}
+		}
+		return stream;
+	}
 };
