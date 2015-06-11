@@ -9,18 +9,33 @@ import javax.sound.sampled.LineEvent.Type;
 import javax.sound.sampled.LineListener;
 
 import javafx.application.Application;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.event.ActionEvent;
+import javafx.event.Event;
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 
 public class Main extends Application {
 	AudioFormat format;
 	CaptureAudio audio;
-	File file;
+	XYChart.Series series;
+    Button captureButton;
+    Button openButton;
+    byte[] currentSignal;
 	
-	public int[] toIntArray(byte[] bites) {
+	private int[] toIntArray(byte[] bites) {
 		if(format.getSampleSizeInBits() == 16) {
 			int[] array = new int[bites.length / 2];
 			int arrayIndex = 0;
@@ -46,7 +61,7 @@ public class Main extends Application {
 		}
 	}
 	
-	public void initializeFormat() {
+	private void initializeFormat() {
 		// Initialize AudioFormat
 		float sampleRate = 16000;//16000;
 		int sampleSizeInBits = 16;//16;
@@ -59,11 +74,40 @@ public class Main extends Application {
 	
     @SuppressWarnings({ "unchecked", "rawtypes", "unused" })
 	@Override public void start(Stage stage) {
-    	file = new File("capture.wav");
+        stage.setTitle("Signal Processing Senior Project");
+        //defining the axes
+        final NumberAxis xAxis = new NumberAxis();
+        final NumberAxis yAxis = new NumberAxis();
+        xAxis.setLabel("Frames");
+        yAxis.setLabel("Amplitude");
+        //creating the chart
+        final LineChart<Number,Number> lineChart = 
+                new LineChart<Number,Number>(xAxis,yAxis);
+                
+        lineChart.setTitle("Audio Signal");
+        //defining a series
+        series = new XYChart.Series();
+        series.setName("Original Line");
+        lineChart.getData().add(series);
+        
+       	BorderPane border = new BorderPane();
+    	HBox box = addHBox();
+    	border.setTop(box);
+    	border.setCenter(lineChart);
+    	
+    	Scene scene = new Scene(border,800,600);
+        
+        //Scene scene  = new Scene(lineChart,800,600);
+    	box.requestFocus();
+        stage.setScene(scene);
+        stage.show();
+    }
+    
+    private void readData(boolean readFile, File file) {
     	ByteArrayOutputStream stream;
     	byte[] signalBites;
     	
-    	if(true) { 
+    	if(readFile) { 
     		ReadAudioFile audio = new ReadAudioFile(file);
     		audio.readFile();
     		stream = audio.getStream();
@@ -79,55 +123,137 @@ public class Main extends Application {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-	    	stopCapture();
+	    	stopCapture(file);
 	    	
 	    	//TODO study about Thread.getStackTrace()
 	    	stream = audio.getStream();
 	    	signalBites = stream.toByteArray();
+	    	writeToFile(signalBites, file);
     	}
     	
-    	writeToFile(signalBites);
+    	currentSignal = signalBites;
+    }
+    
+    private void readFromFile(File file) {
+		ReadAudioFile audio = new ReadAudioFile(file);
+		audio.readFile();
+		currentSignal = audio.getStream().toByteArray();
+		format = audio.getFormat();
+		
+		int[] signal = toIntArray(currentSignal);
+		updateGraph(signal);
+		playClip(currentSignal);
+    }
+    
+    private void updateGraph(int[] signal) {
+    	series.getData().clear();
     	
-    	int[] data = toIntArray(signalBites);
-    	
-    	
-    	
-        stage.setTitle("Signal Processing Senior Project");
-        //defining the axes
-        final NumberAxis xAxis = new NumberAxis();
-        final NumberAxis yAxis = new NumberAxis();
-        xAxis.setLabel("Frames");
-        yAxis.setLabel("Amplitude");
-        //creating the chart
-        final LineChart<Number,Number> lineChart = 
-                new LineChart<Number,Number>(xAxis,yAxis);
-                
-        lineChart.setTitle("Audio Signal");
-        //defining a series
-        XYChart.Series series = new XYChart.Series();
-        series.setName("Original Line");
-
         //populating the series with data
-        int start = data.length / 2;
+        int start = signal.length / 2;
         int end = start + 300;//(bites.length * 17) / 32;
         for(int i = start; i < end; i++) {
         	//fix for 32 bit
-            series.getData().add(new XYChart.Data((i - start), data[i]));
+            series.getData().add(new XYChart.Data((i - start), signal[i]));
          /*   if(i % 100 == 0)
             	System.out.println((i - start)*2 + " " + bites.length);*/
         }
-        lineChart.getData().add(series);
-        
-        Scene scene  = new Scene(lineChart,800,600);
-       
-        stage.setScene(scene);
-        stage.show();
-        
-    	PlayAudio play = new PlayAudio(signalBites, format);
-    	play.playClip();
     }
+    
+    private void playClip(byte[] signal) {
+    	PlayAudio play = new PlayAudio(signal, format);
+    	play.playClip();	
+    }
+    
+    private HBox addHBox() {
+        HBox hbox = new HBox();
+        hbox.setPadding(new Insets(15, 12, 15, 12));
+        hbox.setSpacing(10);
+        hbox.setStyle("-fx-background-color: #336699;");
+        TextField captureField = new TextField();
+        captureField.promptTextProperty().set(".wav");
+        TextField openField = new TextField();
+        openField.promptTextProperty().set(".wav");
+        captureButton = new Button("Capture");
+        openButton = new Button("Open File");
+        
+        Label label1 = new Label("Save File:");
 
-	private void writeToFile(byte[] signalBites) {
+        
+        captureField.textProperty().addListener(new ChangeListener<String>() {
+			@Override
+			public void changed(ObservableValue<? extends String> observable,
+					String oldValue, String newValue) {
+				if(newValue.length() < 5 || !newValue.endsWith(".wav")) {
+					captureButton.setDisable(true);
+				} else {
+					captureButton.setDisable(false);
+				}	
+			}
+         });
+        
+        captureButton.setDisable(true);
+        captureButton.setPrefSize(100, 20);
+        captureButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event) {
+				if(captureButton.getText() == "Capture") {
+					captureField.setDisable(true);
+					//captureButton.setDisable(false);
+					captureButton.setText("Stop");
+					Thread myThread = new Thread() {
+						@Override
+						public void run() {
+							//readData(false, new File(captureField.getText()));
+							startCapture();
+						}
+					};
+					myThread.start();
+				} else {
+					stopCapture(new File(captureField.getText()));
+					captureButton.setText("Capture");
+					captureField.setDisable(false);
+				}	
+			}
+		});
+
+        Label label2 = new Label("Open File:");
+        
+        openField.textProperty().addListener(new ChangeListener<String>() {
+			@Override
+			public void changed(ObservableValue<? extends String> observable,
+					String oldValue, String newValue) {
+				if(newValue.length() < 5 || !newValue.endsWith(".wav") || 
+						!(new File(newValue).isFile())) {
+					openButton.setDisable(true);
+				} else {
+					openButton.setDisable(false);
+				}	
+			}
+         });
+        
+        openButton = new Button("Open File");
+        openButton.setDisable(true);
+        openButton.setPrefSize(100, 20);
+        openButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent arg0) {
+//				readData(true, new File(openField.getText()));
+				openButton.setDisable(true);
+				openField.setDisable(true);
+				readFromFile(new File(openField.getText()));
+				openButton.setDisable(false);
+				openField.setDisable(false);
+			}
+		});
+        
+        hbox.getChildren().addAll(label1, captureField, captureButton, 
+        		label2, openField, openButton);
+        return hbox;
+    }
+    
+    
+
+	private void writeToFile(byte[] signalBites, File file) {
     	WriteAudioFile toFile = new WriteAudioFile(signalBites, format, file);
     	toFile.start();
 	}
@@ -135,6 +261,7 @@ public class Main extends Application {
     public void startCapture() {
     	if(audio == null || audio.isStopped()) {
 	    	try {
+	        	initializeFormat();
 				audio = new CaptureAudio(format,
 						new LineListener() {
 							@Override
@@ -143,13 +270,14 @@ public class Main extends Application {
 								if (type == Type.CLOSE || type == Type.STOP) {
 									if(!audio.isStopped()) {
 										audio.stopCapture();
-										System.err.println("Audio capture was stopped unexpectedly");
+										System.err.println("Audio capture was stopped unexpectedly.");
 									}
 								}
 							}
 						});
 				System.out.println("STARTED");
 				audio.start();
+				captureButton.setText("Stop");
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -159,10 +287,23 @@ public class Main extends Application {
     	}
     }
     
-    public void stopCapture() {
+    public void stopCapture(File file) {
     	if(audio != null && !audio.isStopped()) {
     		audio.stopCapture();
     		System.out.println("STOPPED");
+    		
+    		
+	    	//TODO study about Thread.getStackTrace()
+	    	currentSignal = audio.getStream().toByteArray();
+    		int[] signal = toIntArray(currentSignal);
+			updateGraph(signal);
+	    	
+	    	writeToFile(currentSignal, file);
+			playClip(currentSignal);
+    		
+    		
+/*			captureButton.setDisable(false);
+			captureButton.setText("Capture");*/
     	}
     }
     
