@@ -63,8 +63,8 @@ public class Main extends Application {
 	
 	private void initializeFormat() {
 		// Initialize AudioFormat
-		float sampleRate = 16000;//16000;
-		int sampleSizeInBits = 16;//16;
+		float sampleRate = 8000;//16000;
+		int sampleSizeInBits = 8;//16;
 		int channels = 1;
 		boolean signed = true;
 		boolean bigEndian = true;
