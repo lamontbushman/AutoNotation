@@ -1,5 +1,9 @@
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 import javax.sound.sampled.AudioFormat;
@@ -63,7 +67,11 @@ public class Main extends Application {
 	
 	private void initializeFormat() {
 		// Initialize AudioFormat
-		float sampleRate = 8000;//16000;
+		//4186.01 highest piano key
+		//8372.02 twice that
+		//16384 multiple of two 
+		//log2(16384) = 14;
+		float sampleRate = 16384;//16000;
 		int sampleSizeInBits = 8;//16;
 		int channels = 1;
 		boolean signed = true;
@@ -141,9 +149,55 @@ public class Main extends Application {
 		format = audio.getFormat();
 		
 		int[] signal = toIntArray(currentSignal);
+	
+		
 		updateGraph(signal);
 		playClip(currentSignal);
     }
+    
+    private void fft(Complex signal[]) {
+    	FFT.fft(signal);
+    	Double data[] = new Double[signal.length];//maybe int/long
+    	for(int i = 0; i < signal.length; i++) {
+    		data[i] = signal[i].absolute();
+    	}
+    	updateGraph(data);
+    	
+		int maxI = 0;
+		double max = 0;
+    	for(int i = 0; i < data.length/2; i++) {
+    		if(data[i] > max) {
+    			max = data[i];
+    			maxI = i;
+    		}
+    		if(data[i] > 800) {
+    			System.out.println("Harmonic: " + i + " " + data[i] + " frequency: " + computeFrequency(i));
+    		}
+    	}
+    	System.out.println("MAX: " + maxI);
+    	//System.out.println(Collections.max(Arrays.asList(data)));
+    	
+    }
+    
+    private double computeFrequency(int bin) {
+    	return bin * 16384/2048;
+    }
+    
+    
+    private void updateGraph(Double[] signal) {
+    	series.getData().clear();
+    	
+        //populating the series with data
+        int start = 0;// signal.length / 2;
+        int end = signal.length;//start + 300;//(bites.length * 17) / 32;
+        for(int i = start; i < end; i++) {
+        	//fix for 32 bit
+            series.getData().add(new XYChart.Data((i - start), signal[i]));
+         /*   if(i % 100 == 0)
+            	System.out.println((i - start)*2 + " " + bites.length);*/
+        }
+    }
+
     
     private void updateGraph(int[] signal) {
     	series.getData().clear();
@@ -296,15 +350,60 @@ public class Main extends Application {
 	    	//TODO study about Thread.getStackTrace()
 	    	currentSignal = audio.getStream().toByteArray();
     		int[] signal = toIntArray(currentSignal);
-			updateGraph(signal);
-	    	
+	//		updateGraph(signal);
+			
 	    	writeToFile(currentSignal, file);
 			playClip(currentSignal);
+	    	
+			//frequency = j * sampleRate/n
+			//440 = j * 16384 / 2048 
+			// j = 55
+			
+			//(bin_id * freq/2) / (N/2)
+			//(bin_id * 16384/2) / (2048/2)  = 440
+			//bin_id = 55
+			//http://dsp.stackexchange.com/questions/15563/what-exactly-is-the-effect-of-a-hann-window-on-the-fft-output
+	    	int start = signal.length / 2;
+	    	int end = start + 2048; //let's start with hearing at least 880HZ (well probably little under that).
+	    	Complex data[] = new Complex[2048];
+	    	int count = 0;
+	    	List<Double> weights = new ArrayList<Double>();
+	    	for(int i = 0; i < 2048; i++) {
+	    		double weight = 
+	    				Math.pow(
+	    	    				Math.sin((Math.PI*i) / (2048 -1)),
+	    	    				2);
+	    		weights.add(weight);
+	    	}
+	    	
+//	    	double[] array = convertDoubles(weights);
+//	    	updateGraph(array);
+	    	
+	    	
+	    	for(int i = start; i < end; i++) {
+	    		data[count] = new Complex(weights.get(count)*signal[i]);
+	    		count++;
+	    	}
+	    	fft(data);
+
     		
     		
 /*			captureButton.setDisable(false);
 			captureButton.setText("Capture");*/
     	}
+    }
+    
+    public static double[] convertDoubles(List<Double> doubles)
+    {
+        double[] ret = new double[doubles.size()];
+        Iterator<Double> iterator = doubles.iterator();
+        int i = 0;
+        while(iterator.hasNext())
+        {
+            ret[i] = iterator.next().doubleValue();
+            i++;
+        }
+        return ret;
     }
     
     public static void main(String[] args) {
