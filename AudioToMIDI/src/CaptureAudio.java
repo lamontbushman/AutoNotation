@@ -19,9 +19,23 @@ public class CaptureAudio extends Thread {
 	private AudioFormat format;
 	private LineListener listener;
 	
-	public CaptureAudio(AudioFormat format, LineListener listener) {
-		this.format = format;
+	public CaptureAudio(LineListener listener) {
+		this.format = getDefaultFormat();
 		this.listener = listener;
+	}
+	
+	private static AudioFormat getDefaultFormat() {
+		// Initialize AudioFormat
+		//4186.01 highest piano key
+		//8372.02 twice that
+		//16384 multiple of two 
+		//log2(16384) = 14;
+		float sampleRate = 16384;//16000;
+		int sampleSizeInBits = 8;//16;
+		int channels = 1;
+		boolean signed = true;
+		boolean bigEndian = true;
+		return new AudioFormat(sampleRate,sampleSizeInBits,channels,signed,bigEndian);
 	}
 	
 	private void openTargetDataLine() {
@@ -108,5 +122,13 @@ public class CaptureAudio extends Thread {
 	
 	public ByteArrayOutputStream getStream() {
 		return out;
+	}
+	
+	public AudioFormat getFormat() {
+		return format;
+	}
+	
+	public void setFormat(AudioFormat audioFormat) {
+		format = audioFormat;
 	}
 }

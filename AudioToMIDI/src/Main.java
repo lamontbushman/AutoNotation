@@ -37,50 +37,8 @@ public class Main extends Application {
 	XYChart.Series series;
     Button captureButton;
     Button openButton;
-    byte[] currentSignal;
-	
-	private int[] toIntArray(byte[] bites) {
-		if(format.getSampleSizeInBits() == 16) {
-			int[] array = new int[bites.length / 2];
-			int arrayIndex = 0;
-			int first = 0 ;
-			int second = 1;
-			if(!format.isBigEndian()) {
-				first = 1;
-				second = 0;
-			} 
-			for(int i = 0; i < bites.length - 1; i+=2) {
-				array[arrayIndex] = (bites[i + first] << 8) | (bites[i + second] & 0xFF);
-				//System.out.print(Integer.toHexString(array[arrayIndex]) + " ");
-				arrayIndex++;
-			}
-			return array;
-		} else {
-			int[] array = new int[bites.length];
-			for(int i = 0; i < bites.length; i++) {
-				array[i] = bites[i];
-				System.out.println(array[i] + "  " + bites[i]);
-			}
-			return array;
-		}
-	}
-	
-	private void initializeFormat() {
-		// Initialize AudioFormat
-		//4186.01 highest piano key
-		//8372.02 twice that
-		//16384 multiple of two 
-		//log2(16384) = 14;
-		float sampleRate = 16384;//16000;
-		int sampleSizeInBits = 8;//16;
-		int channels = 1;
-		boolean signed = true;
-		boolean bigEndian = true;
-		format = new AudioFormat(sampleRate,sampleSizeInBits,channels,signed,bigEndian);
-	}
-	
-	
-    @SuppressWarnings({ "unchecked", "rawtypes", "unused" })
+		
+  //  @SuppressWarnings({ "unchecked", "rawtypes", "unused" })
 	@Override public void start(Stage stage) {
         stage.setTitle("Signal Processing Senior Project");
         //defining the axes
@@ -110,80 +68,29 @@ public class Main extends Application {
         stage.setScene(scene);
         stage.show();
     }
-    
-    private void readData(boolean readFile, File file) {
-    	ByteArrayOutputStream stream;
-    	byte[] signalBites;
-    	
-    	if(readFile) { 
-    		ReadAudioFile audio = new ReadAudioFile(file);
-    		audio.readFile();
-    		stream = audio.getStream();
-    		signalBites = stream.toByteArray();
-    		format = audio.getFormat();
-    	} else {
-	    	initializeFormat();
-	    	//ByteArrayOutputStream stream = runReadAudio();
-	    	startCapture();
-	    	try {
-				Thread.sleep(5000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-	    	stopCapture(file);
-	    	
-	    	//TODO study about Thread.getStackTrace()
-	    	stream = audio.getStream();
-	    	signalBites = stream.toByteArray();
-	    	writeToFile(signalBites, file);
-    	}
-    	
-    	currentSignal = signalBites;
-    }
-    
+        
     private void readFromFile(File file) {
 		ReadAudioFile audio = new ReadAudioFile(file);
 		audio.readFile();
-		currentSignal = audio.getStream().toByteArray();
-		format = audio.getFormat();
+		AudioData audioData = new AudioData(
+				audio.getStream().toByteArray(),
+				audio.getFormat());
+		processSignal(audioData, false);
+    }
+    
+    private void processSignal(AudioData audioData, boolean saveData) {
+    	// Display Original Signal
+		updateGraph(audioData.getOriginalSignal());
 		
-		int[] signal = toIntArray(currentSignal);
-	
+		// Play the data
+		playClip(audioData.getSampledData());c
 		
-		updateGraph(signal);
-		playClip(currentSignal);
+		// Save the data
+		if(saveData) {
+			//TODO
+		}
     }
-    
-    private void fft(Complex signal[]) {
-    	FFT.fft(signal);
-    	Double data[] = new Double[signal.length];//maybe int/long
-    	for(int i = 0; i < signal.length; i++) {
-    		data[i] = signal[i].absolute();
-    	}
-    	updateGraph(data);
-    	
-		int maxI = 0;
-		double max = 0;
-    	for(int i = 0; i < data.length/2; i++) {
-    		if(data[i] > max) {
-    			max = data[i];
-    			maxI = i;
-    		}
-    		if(data[i] > 800) {
-    			System.out.println("Harmonic: " + i + " " + data[i] + " frequency: " + computeFrequency(i));
-    		}
-    	}
-    	System.out.println("MAX: " + maxI);
-    	//System.out.println(Collections.max(Arrays.asList(data)));
-    	
-    }
-    
-    private double computeFrequency(int bin) {
-    	return bin * 16384/2048;
-    }
-    
-    
+        
     private void updateGraph(Double[] signal) {
     	series.getData().clear();
     	
@@ -354,59 +261,46 @@ public class Main extends Application {
 			
 	    	writeToFile(currentSignal, file);
 			playClip(currentSignal);
-	    	
-			//frequency = j * sampleRate/n
-			//440 = j * 16384 / 2048 
-			// j = 55
 			
-			//(bin_id * freq/2) / (N/2)
-			//(bin_id * 16384/2) / (2048/2)  = 440
-			//bin_id = 55
-			//http://dsp.stackexchange.com/questions/15563/what-exactly-is-the-effect-of-a-hann-window-on-the-fft-output
-	    	int start = signal.length / 2;
-	    	int end = start + 2048; //let's start with hearing at least 880HZ (well probably little under that).
-	    	Complex data[] = new Complex[2048];
-	    	int count = 0;
-	    	List<Double> weights = new ArrayList<Double>();
-	    	for(int i = 0; i < 2048; i++) {
-	    		double weight = 
-	    				Math.pow(
-	    	    				Math.sin((Math.PI*i) / (2048 -1)),
-	    	    				2);
-	    		weights.add(weight);
-	    	}
-	    	
-//	    	double[] array = convertDoubles(weights);
-//	    	updateGraph(array);
-	    	
-	    	
-	    	for(int i = start; i < end; i++) {
-	    		data[count] = new Complex(weights.get(count)*signal[i]);
-	    		count++;
-	    	}
-	    	fft(data);
-
-    		
-    		
 /*			captureButton.setDisable(false);
 			captureButton.setText("Capture");*/
     	}
-    }
-    
-    public static double[] convertDoubles(List<Double> doubles)
-    {
-        double[] ret = new double[doubles.size()];
-        Iterator<Double> iterator = doubles.iterator();
-        int i = 0;
-        while(iterator.hasNext())
-        {
-            ret[i] = iterator.next().doubleValue();
-            i++;
-        }
-        return ret;
     }
     
     public static void main(String[] args) {
         launch(args);
     }
 }
+
+/*
+private void readData(boolean readFile, File file) {
+	ByteArrayOutputStream stream;
+	byte[] signalBites;
+	
+	if(readFile) { 
+		ReadAudioFile audio = new ReadAudioFile(file);
+		audio.readFile();
+		stream = audio.getStream();
+		signalBites = stream.toByteArray();
+		format = audio.getFormat();
+	} else {
+    	initializeFormat();
+    	//ByteArrayOutputStream stream = runReadAudio();
+    	startCapture();
+    	try {
+			Thread.sleep(5000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	stopCapture(file);
+    	
+    	//TODO study about Thread.getStackTrace()
+    	stream = audio.getStream();
+    	signalBites = stream.toByteArray();
+    	writeToFile(signalBites, file);
+	}
+	
+	currentSignal = signalBites;
+}
+*/

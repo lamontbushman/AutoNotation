@@ -25,7 +25,7 @@ public class FFT {
 				for(int j = 0; j < mh; j++) { // m/2 iterations
 					Complex e = Complex.expI(2.0*Math.PI*j/m);//check this
 					Complex u = input[r + j];
-					Complex v = Complex.mult(input[r + j + mh],e);
+					Complex v = Complex.mult(input[r + j + mh], e);
 					input[r + j] = Complex.add(u,v);
 					input[r + j + mh] = Complex.subt(u,v); //subtract wasn't tested
 				}

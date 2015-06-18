@@ -50,6 +50,9 @@ public class ReadAudioFile {
 		    	}
 		    } catch (Exception ex) { 
 		    	// Handle the error...
+		    	//TODO have better errors
+		    } finally {
+		    	out.close();
 		    }
 	   } catch (Exception e) {
 		  // Handle the error...

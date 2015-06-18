@@ -25,6 +25,7 @@ public class WriteAudioFile extends Thread {
 	}
 	
 	private void writeFile() {
+		//TODO see if I can save it in big-endian instead of little-endian
 		ByteArrayInputStream bais = new ByteArrayInputStream(bites);
 	    AudioInputStream audioInputStream = 
 	    		new AudioInputStream(bais, format, 
