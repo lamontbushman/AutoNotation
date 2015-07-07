@@ -9,6 +9,16 @@ public class AudioData {
 	private Complex[] complexData;
 	private double overlapPercent;
 	private int fftLength;
+	private boolean dataWindowed;
+	private Complex[] fft;
+	private Double[] fftAbsolute;
+	private Double[] fftCepstrum;
+	private Double[] frequencies;
+	private String[] noteNames;
+	private Double[] normalizedFrequencies;
+	private Double[] fftInverseTest;
+	private Double[] autoCorrelationAbsolute;
+	private boolean dataHanned;
 	
 	AudioData(byte[] samples, AudioFormat audioFormat) {
 		format = audioFormat;
@@ -38,7 +48,7 @@ public class AudioData {
 			int[] array = new int[bites.length];
 			for(int i = 0; i < bites.length; i++) {
 				array[i] = bites[i];
-				System.out.println(array[i] + "  " + bites[i]);
+//				System.out.println(array[i] + "  " + bites[i]);
 			}
 			return array;
 		}
@@ -79,4 +89,86 @@ public class AudioData {
 	public void setFftLength(int fftLength) {
 		this.fftLength = fftLength;
 	}
+	
+	public boolean isDataWindowed() {
+		return dataWindowed;
+	}
+
+	public void setDataWindowed() {
+		this.dataWindowed = true;
+	}
+	
+	public Double[] getFftAbsolute() {
+		return fftAbsolute;
+	}
+
+	public void setFftAbsolute(Double[] fftAbsolute) {
+		this.fftAbsolute = fftAbsolute;
+	}
+
+	public Double[] getFrequencies() {
+		return frequencies;
+	}
+
+	public void setFrequencies(Double[] frequencies) {
+		this.frequencies = frequencies;
+	}
+
+	public String[] getNoteNames() {
+		return noteNames;
+	}
+
+	public void setNoteNames(String[] noteNames) {
+		this.noteNames = noteNames;
+	}
+
+	public Double[] getNormalizedFrequencies() {
+		return normalizedFrequencies;
+	}
+
+	public void setNormalizedFrequencies(Double[] normalizedFrequencies) {
+		this.normalizedFrequencies = normalizedFrequencies;
+	}
+
+	public Double[] getFftCepstrum() {
+		return fftCepstrum;
+	}
+
+	public void setFftCepstrum(Double[] fftCepstrum) {
+		this.fftCepstrum = fftCepstrum;
+	}
+
+	public void setFftInverseTest(Double[] fftData) {
+		fftInverseTest = fftData;
+		// TODO Auto-generated method stub
+	}
+	
+	public Double[] getFftInverseTest() {
+		return fftInverseTest;
+	}
+
+	public Complex[] getFft() {
+		return fft;
+	}
+
+	public void setFft(Complex[] fft) {
+		this.fft = fft;
+	}
+
+	public Double[] getAutoCorrelationAbsolute() {
+		return autoCorrelationAbsolute;
+	}
+
+	public void setAutoCorrelationAbsolute(Double[] autoCorrelationAbsolute) {
+		this.autoCorrelationAbsolute = autoCorrelationAbsolute;
+	}
+
+	public boolean isDataHanned() {
+		return dataHanned;
+	}
+
+	public void setDataHanned() {
+		this.dataHanned = true;
+	}
+
 }

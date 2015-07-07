@@ -24,14 +24,14 @@ public class CaptureAudio extends Thread {
 		this.listener = listener;
 	}
 	
-	private static AudioFormat getDefaultFormat() {
+	public static AudioFormat getDefaultFormat() {
 		// Initialize AudioFormat
 		//4186.01 highest piano key
 		//8372.02 twice that
 		//16384 multiple of two 
 		//log2(16384) = 14;
-		float sampleRate = 16384;//16000;
-		int sampleSizeInBits = 8;//16;
+		float sampleRate = 16384;//16000; 16384  // 16000  // Max: 192002
+		int sampleSizeInBits = 16;//16;   //was 8 
 		int channels = 1;
 		boolean signed = true;
 		boolean bigEndian = true;

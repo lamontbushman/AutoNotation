@@ -1,5 +1,7 @@
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 import javax.sound.sampled.AudioFileFormat;
@@ -21,7 +23,23 @@ public class WriteAudioFile extends Thread {
 	
 	@Override
 	public void run() {
-		writeFile();
+		writeBytes();
+	}
+	
+	private void writeBytes() {
+		FileOutputStream stream;
+		try {
+			stream = new FileOutputStream(file);
+			stream.write(bites);
+			stream.close();
+		}  
+		catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		catch (IOException ioe) {
+			ioe.printStackTrace();
+		} 
 	}
 	
 	private void writeFile() {

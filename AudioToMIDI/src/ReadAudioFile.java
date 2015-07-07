@@ -1,5 +1,8 @@
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -16,6 +19,26 @@ public class ReadAudioFile {
 	}
 	
 	public void readFile() {
+		try {
+			FileInputStream fis = new FileInputStream(file);
+			out = new ByteArrayOutputStream();
+			byte[] array = new byte[(int) file.length()];
+			fis.read(array);
+			fis.close();
+			out.write(array);
+			
+			format = CaptureAudio.getDefaultFormat();
+			
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		}
+		
+	}
+	
+	public void readFile(boolean old) {
 		out = new ByteArrayOutputStream();
 		
 		int totalFramesRead = 0;

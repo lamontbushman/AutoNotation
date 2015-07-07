@@ -43,6 +43,9 @@ public class Complex {
 
 	//TODO test
 	public static Complex mult(Complex n1, Complex n2) {
+	/*	if(n1 == null || n2 == null)
+			return new Complex(0);*/
+		
 		Complex val = new Complex();
 		double ac = n1.re * n2.re;
 		double bd = n1.im * n2.im;
@@ -54,12 +57,37 @@ public class Complex {
 
 	//TODO test
 	public Complex mult(Complex n) {
+/*		if(n == null)
+			return new Complex(0);
+*/
+		Complex val = new Complex();
 		double ac = re * n.re;
 		double bd = im * n.im;
 		double abcd = (re + im) * (n.re + n.im);
-		re = ac - bd;
-		im = abcd - ac - bd;
-		return this;
+		val.re = ac - bd;
+		val.im = abcd - ac - bd;
+		return val;
+	}
+	
+	public Complex div(int n) {
+		Complex val = new Complex();
+		double ac = re * n;
+		double c2 = Math.pow(n,2);
+		val.re = ac / c2;
+		val.im = 0;
+		return val;
+	}
+	
+	public Complex div(Complex n) {
+		Complex val = new Complex();
+		double ac = re * n.re;
+		double bd = im * n.im;
+		double bc = im * n.re;
+		double ad = re * n.im;
+		double c2d2 = Math.pow(n.re,2) + Math.pow(n.im,2);
+		val.re = (ac + bd) / c2d2;
+		val.im = (bc - ad) / c2d2;
+		return val;
 	}
 	
 	/**
@@ -94,6 +122,11 @@ public class Complex {
 	public double absolute() {
 		//TODO Do I need to handle NaN;
 		return Math.sqrt(Math.pow(re,2) + Math.pow(im,2));
+	}
+	
+	public double absoluteSquare() {
+		//TODO replace with more efficient after it is working, change and then test.
+		return Math.pow(absolute(),2);//Math.pow(re,2) + Math.pow(im,2);		
 	}
 	
 	@Override
@@ -134,5 +167,21 @@ public class Complex {
 			}
 		}
 		in.close();
+	}
+
+	public Complex conjugate() {
+		return new Complex(re, im * -1);
+	}
+	
+	public point toPoint() {
+		return new point(0, (float)re);
+	}
+	
+	public boolean isEqual(Complex n) {
+		if(Math.abs((Math.floor(re) - Math.floor(n.re))) <= 1 && 
+		  Math.abs(Math.floor(Math.abs(im)) - Math.floor(Math.abs(n.im))) <= 1)
+			return true;
+		else
+			return false;
 	}
 }

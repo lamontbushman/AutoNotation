@@ -5,7 +5,15 @@ public class FFT {
 	private FFT() {
 	}
 	
-	public static void fft(Complex input[]) {
+	public static void fftForward(Complex input[]) {
+		fft(input, 1);
+	}
+	
+	public static void fftInverse(Complex input[]) {
+		fft(input, -1);
+	}
+	
+	private static void fft(Complex input[], int direction) {
 		int n = input.length;
 		int numBits = (int) (Math.log(n) / LOG2);
 		if (Math.pow(2,numBits) != n) {
@@ -23,7 +31,7 @@ public class FFT {
 			//TODO make sure <= not <
 			for(int r = 0; r <= n - m; r+=m) { // n/m iterations
 				for(int j = 0; j < mh; j++) { // m/2 iterations
-					Complex e = Complex.expI(2.0*Math.PI*j/m);//check this
+					Complex e = Complex.expI(direction * 2.0*Math.PI*j/m);//check this
 					Complex u = input[r + j];
 					Complex v = Complex.mult(input[r + j + mh], e);
 					input[r + j] = Complex.add(u,v);
@@ -53,12 +61,95 @@ public class FFT {
 			toReverse >>= 1;
 			numBits--;
 		}
-		System.out.println(reverse);
 		return reverse;
 	}
 	
 	public static void main(String args[]) {
-		Complex[] complexes = {
+/*		Complex[] complexes = {
+				new Complex(0), //0
+				new Complex(.5),
+				new Complex(1), //2
+				new Complex(.5),
+				new Complex(0),  //4
+				new Complex(-.5),
+				new Complex(-1),  //6
+				new Complex(-.5),
+				new Complex(0),  //8
+				
+				
+				new Complex(.5),
+				new Complex(1),  //10
+				new Complex(.5),
+				new Complex(0),  //12
+				new Complex(-.5),
+				new Complex(-1),  //14
+				new Complex(-.5),
+				new Complex(0),  //16
+				new Complex(.5),
+				new Complex(1),  //18
+				new Complex(.5),
+				new Complex(0),  //20
+				new Complex(-.5),
+				new Complex(-1), //22
+				new Complex(-.5),
+				new Complex(0),   //22
+		};*/
+		
+		Complex[] complexes = new Complex[(int) Math.pow(2, 5)];//32
+		for(int i = 0; i < complexes.length; i++) {
+			switch(i%8) {
+			case 0:
+				complexes[i] = new Complex(0);
+				break;
+			case 1:
+				complexes[i] = new Complex(.5);
+				break;
+			case 2:
+				complexes[i] = new Complex(1);
+				break;	
+			case 3:
+				complexes[i] = new Complex(.5);
+				break;
+			case 4:
+				complexes[i] = new Complex(0);
+				break;
+			case 5:
+				complexes[i] = new Complex(-.5);
+				break;
+			case 6:
+				complexes[i] = new Complex(-1);
+				break;
+			case 7:
+				complexes[i] = new Complex(-.5);
+				break;
+/*			case 8:
+				complexes[i] = new Complex(0);				
+				System.out.println(0 + " " + i%9);
+				break;*/
+			}
+		}
+		
+		for(int i = 0; i < complexes.length; i++) {
+			System.out.println(complexes[i]);
+		}
+		
+		System.out.println("Before forward");		
+		fftForward(complexes);
+		System.out.println("After forward");
+		
+		for(int i = 0; i < complexes.length; i++) {
+			System.out.println(complexes[i].absolute());
+		}
+		
+		System.out.println("Before inverse");
+		fftForward(complexes);
+		//fftForward(complexes);
+		System.out.println("After inverse");
+		
+		for(int i = 0; i < complexes.length; i++) {
+			System.out.println(complexes[i].absolute());
+		}
+		/*Complex[] complexes = {
 				new Complex(0),
 				new Complex(1),
 				new Complex(2),
@@ -67,14 +158,14 @@ public class FFT {
 				new Complex(5),
 				new Complex(6),
 				new Complex(7)
-		};
-		for(Complex c : complexes) {
+		};*/
+	/*	for(Complex c : complexes) {
 			System.out.println(c);
 		}
 		revBinaryPermute(complexes);
 		for(Complex c : complexes) {
 			System.out.println(c);
-		}
+		}*/
 	}
 }
 

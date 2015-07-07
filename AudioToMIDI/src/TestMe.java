@@ -1,4 +1,5 @@
 import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
 
 
 public class TestMe {
@@ -10,10 +11,21 @@ public class TestMe {
 		array[3] = 8;
 	}
 	
-	public static <?> void getList() {
-	}
+/*	public static <?> void getList() {
+	}*/
 	
 	public static void main(String args[]) {
+		Complex[] complexData = new Complex[10];
+		for(int i = 0; i < complexData.length; i++) {
+			complexData[i] = new Complex(i);
+		}
+		
+		Complex[] toFft = Arrays.copyOfRange(complexData, 0, complexData.length*2);
+		
+		for(Complex c : toFft) {
+			System.out.println(c);
+		}
+		
 /*		byte[] bites = new byte[4];
 		bites[0] = 1;
 		bites[1] = 2;
