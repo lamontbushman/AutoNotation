@@ -1,4 +1,6 @@
-import java.util.ArrayList;
+package lbushman.audioToMIDI.util;
+
+
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -85,6 +87,31 @@ public class Util {
     	return index;
     }
     
+    public static int maxIndex(List<Number> list, int lowerInc, int upperExc) {
+    	Double max = Double.NEGATIVE_INFINITY;
+    	int index = -1;
+    	for(int i = lowerInc; i < upperExc; i++) {
+    		if(list.get(i).doubleValue() > max) {
+    			index = i;
+    			max = list.get(i).doubleValue();
+    		}
+    	}
+    	return index;
+    }
+    
+    public static double average(List<Integer> modes) {
+    	double total = 0;
+    	for(Number n : modes) {
+    		total += n.doubleValue();
+    	}
+    	return total / modes.size();
+    }
+    
+    public static int round(double number) {
+    	return (int) Math.round(number);
+    }
+    
+    //TODO remove after peakIndex(Number[]..) is removed from main
     public static int maxIndex(Number[] list, int lowerInc, int upperExc) {
     	Double max = Double.NEGATIVE_INFINITY;
     	int index = -1;

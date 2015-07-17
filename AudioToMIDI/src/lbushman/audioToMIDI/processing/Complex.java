@@ -1,3 +1,5 @@
+package lbushman.audioToMIDI.processing;
+
 import java.io.IOException;
 import java.util.Scanner;
 
@@ -6,17 +8,17 @@ public class Complex {
 	private double re;
 	private double im;
 	
-	Complex() {
+	public Complex() {
 		re = 0;
 		im = 0;
 	}
 
-	Complex(double real) {
+	public Complex(double real) {
 		re = real;
 		im = 0;
 	}
 	
-	Complex(double real, double imaginary) {
+	public Complex(double real, double imaginary) {
 		re = real;
 		im = imaginary;
 	}
@@ -171,10 +173,6 @@ public class Complex {
 
 	public Complex conjugate() {
 		return new Complex(re, im * -1);
-	}
-	
-	public point toPoint() {
-		return new point(0, (float)re);
 	}
 	
 	public boolean isEqual(Complex n) {

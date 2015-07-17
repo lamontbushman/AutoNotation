@@ -1,3 +1,7 @@
+package lbushman.audioToMIDI.gui;
+
+import lbushman.audioToMIDI.util.Util;
+
 import java.util.function.Predicate;
 
 import javafx.collections.transformation.FilteredList;
@@ -23,7 +27,7 @@ public class Graph extends BorderPane {
 	private Integer low;
 	private Integer high;
 	FilteredList<Data<Number,Number>> filtList;
-	ArrayObservableList<Data<Number, Number>> obsList;
+	//ArrayObservableList<Data<Number, Number>> obsList;
 	
 	Graph(String title, String xAxis, String yAxis) 
 	{

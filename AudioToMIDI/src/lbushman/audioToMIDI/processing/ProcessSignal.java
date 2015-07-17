@@ -1,7 +1,9 @@
+package lbushman.audioToMIDI.processing;
+
+import lbushman.audioToMIDI.io.CaptureAudio;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Vector;
 
 import javax.sound.sampled.AudioFormat;
 
@@ -540,12 +542,12 @@ public class ProcessSignal {
 			for(int j = 0; j < toFft.length; j++) {	
 				fftAbsolute[(i*2)+j] = lp[j];
 			}
-			
+/*			
 			//TODO uncomment if filter is removed
-/*			for(int j = 0; j < toFft.length; j++) {	
+			for(int j = 0; j < toFft.length; j++) {	
 				fftAbsolute[(i*2)+j] = toFft[j].absolute();
 			}
-*/
+*/			
 			
 			//TODO probably the problem is in the size of the sample rate.
 

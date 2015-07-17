@@ -1,3 +1,5 @@
+package lbushman.audioToMIDI.io;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -14,7 +16,7 @@ public class ReadAudioFile {
 	private ByteArrayOutputStream out;
 	private AudioFormat format;
 	
-	ReadAudioFile(File file) {
+	public ReadAudioFile(File file) {
 		this.file = file;
 	}
 	

@@ -1,3 +1,5 @@
+package lbushman.audioToMIDI.processing;
+
 
 public class FrequencyToNote {
 	private static int midiOffset = 12;

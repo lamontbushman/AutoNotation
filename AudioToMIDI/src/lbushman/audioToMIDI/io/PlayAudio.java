@@ -1,3 +1,5 @@
+package lbushman.audioToMIDI.io;
+
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -13,7 +15,7 @@ public class PlayAudio {
 	private AudioFormat format;
 	private byte[] data;
 	
-	PlayAudio(byte[] data, AudioFormat format) {
+	public PlayAudio(byte[] data, AudioFormat format) {
 		this.data = data;
 		this.format = format;
 	}

@@ -1,34 +1,38 @@
-import java.io.ByteArrayOutputStream;
+package lbushman.audioToMIDI.gui;
+
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Stack;
 
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineEvent;
 import javax.sound.sampled.LineEvent.Type;
 import javax.sound.sampled.LineListener;
 
+import lbushman.audioToMIDI.io.CaptureAudio;
+import lbushman.audioToMIDI.io.PlayAudio;
+import lbushman.audioToMIDI.io.ReadAudioFile;
+import lbushman.audioToMIDI.io.WriteAudioFile;
+import lbushman.audioToMIDI.processing.AudioData;
+import lbushman.audioToMIDI.processing.Complex;
+import lbushman.audioToMIDI.processing.FrequencyToNote;
+import lbushman.audioToMIDI.processing.FundamentalFrequency;
+import lbushman.audioToMIDI.processing.ProcessSignal;
+import lbushman.audioToMIDI.processing.RunningWindowStats;
+import lbushman.audioToMIDI.util.Util;
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
-import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
@@ -40,7 +44,6 @@ public class Main extends Application {
     Button displayFFTButton;
     Double[] absolute;
     AudioData audioData;
-	private int numFFT;
 	private int fftLength;
 	private int fftArrayLength;
 	private byte[] capturedAudio;
@@ -67,6 +70,187 @@ public class Main extends Application {
         stage.setScene(scene);
         stage.show();
     }
+	
+	public List<Integer> findPeaks(List<Number> signal, int firstPeak, int windowLength) {
+		List<Integer> peakIndexes = new ArrayList<Integer>();
+		peakIndexes.add(firstPeak); //assuming start is the first peak of concern
+		RunningWindowStats firstWindow = new RunningWindowStats(windowLength);
+		
+		int index = firstPeak;
+		
+		int end = signal.size() / 2;
+		
+		while(!firstWindow.isFull()) {
+			firstWindow.add(signal.get(index));
+			index++;
+			//for(; !firstWindow.isFull() && index < end; index++) {
+		}
+		
+		for(; index < end; index++) {
+			System.out.println(index + "," + firstWindow.variance());
+			firstWindow.add(signal.get(index));
+		}
+		
+		return peakIndexes;
+	}
+	
+	/**
+	 * Finds the peaks, including firstPeak, in the signal starting the search from firstPeak.
+	 * Only searches up to half of the signal assuming the signal is a FFT with duplicate information.
+	 * 
+	 * Assumes that peaks are at least two windowLengths apart.
+	 * 
+	 * @param signal
+	 * @param windowLength - a length to compare the current versus the next portions of the graph.
+	 * @param firstPeak
+	 * @param zAllowance - how far the next window is allowed to be off from the current window
+	 * before it is counted as the beginning of a peak. It is based off of the z-score from the deviation
+	 * of the current window and the average of the next window.
+	 * @return
+	 */
+	public List<Integer> findPeaks(List<Number> signal, int windowLength, int firstPeak, double zAllowance) {	
+	/*	if(true) {
+			return findPeaks(signal, firstPeak, windowLength);
+		}*/
+		
+		windowLength = 6;//7, 10
+		
+		List<Integer> peakIndexes = new ArrayList<Integer>();
+		peakIndexes.add(firstPeak); //assuming start is the first peak of concern
+		
+		RunningWindowStats firstWindow = new RunningWindowStats(windowLength);
+		RunningWindowStats secondWindow = new RunningWindowStats(windowLength);
+		
+		int index = firstPeak;
+		
+		//Only search the first half of the FFT.
+		//Because of this I am not worrying about hitting the end of the array
+		//Wishy washiness is allowed.
+		int end = signal.size() / 2;
+		
+		//Hopefully this length reaches the peak, but not the next peak.
+		int searchPeakLen = (int) (windowLength * 1.5);
+		boolean newPeakFound = false;
+		//int searchAheadLen = windowLength * 2;
+		
+		
+/*		//TODO possible problem if there is no bottom
+		
+		//Find bottom of first peak
+		while(signal.get(index).doubleValue() > signal.get(index + 1).doubleValue()) {
+			index++;
+		}
+		
+		//TODO see if this needs to be removed and not worry about filling the window
+		//maybe a modified zAllowance based off rws.size()
+		
+		//Fill up windows (may be full from previous peak)		
+		while(!firstWindow.isFull()) {
+			firstWindow.add(signal.get(index));
+			index++;
+			//for(; !firstWindow.isFull() && index < end; index++) {
+		}
+		
+		while(!secondWindow.isFull()) {
+			secondWindow.add(signal.get(index));
+			index++;
+		}
+*/		
+		int windowSep = windowLength;
+		
+		while(index < end) {
+			//Find bottom of peak
+			while(index < end &&
+					signal.get(index).doubleValue() > signal.get(index + 1).doubleValue()) {
+				index++;
+			}
+			
+			//TODO see if this needs to be removed and not worry about filling the window
+			//maybe a modified zAllowance based off rws.size()
+			
+			//Fill up windows (may be full from previous peak)		
+			while(!firstWindow.isFull()) {
+				firstWindow.add(signal.get(index));
+				index++;
+				//for(; !firstWindow.isFull() && index < end; index++) {
+			}
+			
+			while(!secondWindow.isFull()) {
+				secondWindow.add(signal.get(index));
+				index++;
+			}
+			
+			//Find beginning of next peak
+			for(; index < end; index++) {
+				//double mean = secondWindow.mean();
+				//double zScore = Math.abs(firstWindow.zScore(mean));
+				//System.out.print(index + ": " + zScore + ":");
+				//System.out.println(index + ":" + firstWindow.mean() + ":" + mean);
+				
+				double pValue = RunningWindowStats.pValue(firstWindow, secondWindow);
+				System.out.println(index + "," + pValue + "," + ((pValue <= 0.05)?"T":"F") + "," + ((pValue <= 0.1)?"T":"F"));
+				
+//				System.out.println("zScore[" + (index - windowLength) + "-" + index + "] = " + zScore);
+			
+				/*
+				 55
+110
+165
+220
+275
+330
+385
+
+				*/
+				firstWindow.add(secondWindow.peek());
+				secondWindow.add(signal.get(index));
+				
+				
+		//		if(index != 109 && index != 165 && index != 218 && index != 274 && index != 328/*zScore <= zAllowance*/) {
+/*				if(index != 110 && index != 165 && index != 220 && index != 275 && index != 330 && index != 385zScore <= zAllowance) {
+					firstWindow.add(secondWindow.peek());
+					secondWindow.add(signal.get(index));
+				} else {
+					newPeakFound = true;
+					break;
+				}*/
+			}
+			
+			if(newPeakFound) {
+				//Search for peak within a range
+				//Start at the beginning of the second window
+				int searchBeg = index - windowLength; 
+				int searchEnd = searchBeg + searchPeakLen;
+				//probably not needed
+				if(searchEnd >= end) {
+					searchEnd = end;
+				}
+				
+//				System.out.println("Searching from " + searchBeg + " to " + searchEnd);
+				index = Util.maxIndex(signal, searchBeg, searchEnd);
+				
+				//Clear both windows, since the data is probably not accurate
+				// with the advent of the new peak.
+				//However, doing so, I am forced to assume that the next peak
+				// will not start within two windowLengths;
+				firstWindow.clear();
+				secondWindow.clear();
+				
+			
+				//TODO The top of the peak may depend on hitting end of signal
+				peakIndexes.add(index);
+//				System.out.println("Peak at index: " + index);
+			} else {
+				//System.out.println("No new peak found");
+				break;
+			}
+			newPeakFound = false;
+		}
+		return peakIndexes;
+	}
+	
+	//TODO TODO TODO delta and skip ??? https://www.youtube.com/watch?v=nYED_-eY4Ys , .1 seconds, difficult to analyze with 
+	//Enumeration.class
 	
 	public List<Integer> findPeaks(Number[] signal, int windowLength, int start, int end, int firstPeak, double zAllowance) {
 		List<Integer> peakIndexes = new ArrayList<Integer>();
@@ -103,7 +287,7 @@ public class Main extends Application {
 				rws.add(signal[index]);
 //				System.out.println("Window filling: " + index);
 			}
-			
+		
 			//Find beginning of next peak
 			for(; index + 3< end; index++) {
 				double zValue = Math.abs(rws.zScore(signal[index+3]));
@@ -131,6 +315,9 @@ public class Main extends Application {
 			
 			//Find top of peak
 			if(findPeakWindow == -1) {
+				//As soon as the base of the first peak is found.
+				//Calculate the window based of 1/4 the distance between the
+				//base and the first peak
 				findPeakWindow = (index - start) / 4;
 			}
 			int maxEnd = index + findPeakWindow;
@@ -545,7 +732,19 @@ public class Main extends Application {
     	int start = nth * this.fftLength;
     	int end = start + this.fftLength;
     	int maxI = findMax(fftData, start, end, 0);
-		List<Integer> peaks = findPeaks(fftData, 25,/*(int) audioData.getFormat().getSampleRate() / audioData.getFftLength(),*/ // A good guess for window size
+    	
+    	int subMaxI = maxI - start;
+    	
+    	List<Number> data = Arrays.asList(fftData).subList(start, end);
+    	List<Integer> peaks = FundamentalFrequency.findPeaks(data, subMaxI, 6, .05);
+    	
+/*    	List<Integer> peaks = findPeaks(data, 7this will depend on sample rate and fftLength,
+    			subMaxI, 0.00013); //This might depend upon the frequency.
+*/    	
+    		//	25, start, end, maxI,0.000013);
+    	
+    	
+		List<Integer> peaks2 = findPeaks(fftData, 25,/*(int) audioData.getFormat().getSampleRate() / audioData.getFftLength(),*/ // A good guess for window size
 				start, end, maxI,0.000013); // 1 std deviation. Really no backing to this
 		
 		List<Integer> peakDiff = new LinkedList<Integer>();
@@ -558,7 +757,7 @@ public class Main extends Application {
 			System.err.println("You have multiple modes at FFT number: " + nth);
 			//System.exit(1);
 		}
-		return (modes.size() > 1) ? modes.get(0) : -1;
+		return (modes.size() >= 1) ? Util.round(Util.average(modes))/*modes.get(0)*/ : -1; //probably replace with average of modes.
     }
     
     private void displayAC(int n) {

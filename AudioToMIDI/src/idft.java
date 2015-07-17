@@ -1,6 +1,8 @@
 
 import java.util.Vector;
 
+import lbushman.audioToMIDI.processing.Complex;
+
 /**
   Inverse discrete Fourier transform
 

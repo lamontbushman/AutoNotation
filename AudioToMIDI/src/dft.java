@@ -1,5 +1,7 @@
 import java.util.Vector;
 
+import lbushman.audioToMIDI.processing.Complex;
+
 /**
 <p>
   Class supporting the discrete Fourier transform

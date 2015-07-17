@@ -1,3 +1,5 @@
+package lbushman.audioToMIDI.io;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -15,7 +17,7 @@ public class WriteAudioFile extends Thread {
 	private AudioFormat format;
 	private File file;
 	
-	WriteAudioFile(byte[] bites, AudioFormat format, File file) {
+	public WriteAudioFile(byte[] bites, AudioFormat format, File file) {
 		this.bites = bites;
 		this.format = format;
 		this.file = file;

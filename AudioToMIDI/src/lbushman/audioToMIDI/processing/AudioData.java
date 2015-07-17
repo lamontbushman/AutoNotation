@@ -1,3 +1,5 @@
+package lbushman.audioToMIDI.processing;
+
 import javax.sound.sampled.AudioFormat;
 
 public class AudioData {
@@ -20,7 +22,7 @@ public class AudioData {
 	private Double[] autoCorrelationAbsolute;
 	private boolean dataHanned;
 	
-	AudioData(byte[] samples, AudioFormat audioFormat) {
+	public AudioData(byte[] samples, AudioFormat audioFormat) {
 		format = audioFormat;
 		sampledData = samples;
 		//Format first needs to be set

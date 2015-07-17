@@ -1,3 +1,5 @@
+package lbushman.audioToMIDI.io;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 

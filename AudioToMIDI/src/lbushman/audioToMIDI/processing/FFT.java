@@ -1,3 +1,4 @@
+package lbushman.audioToMIDI.processing;
 
 public class FFT {
 	final static double LOG2 = Math.log(2);
