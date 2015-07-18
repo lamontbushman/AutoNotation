@@ -1,5 +1,7 @@
 package lbushman.audioToMIDI.processing;
 
+import java.util.List;
+
 import javax.sound.sampled.AudioFormat;
 
 public class AudioData {
@@ -14,19 +16,26 @@ public class AudioData {
 	private boolean dataWindowed;
 	private Complex[] fft;
 	private Double[] fftAbsolute;
-	private Double[] fftCepstrum;
+	private Double[] fftLowPassAbsolute;
+//	private Double[] fftCepstrum;
 	private Double[] frequencies;
 	private String[] noteNames;
 	private Double[] normalizedFrequencies;
 	private Double[] fftInverseTest;
 	private Double[] autoCorrelationAbsolute;
+	private Integer numFFT;
+	
 	private boolean dataHanned;
+	private List<Double> spectralFlux;
+	private List<Integer> onsets;
 	
 	public AudioData(byte[] samples, AudioFormat audioFormat) {
 		format = audioFormat;
+		//Data in bytes.
 		sampledData = samples;
-		//Format first needs to be set
+		//Format first needs to be set before toIntArray() called.
 		originalSignal = toIntArray(samples);
+		numFFT = null;
 	}
 	
 	private int[] toIntArray(byte[] bites) {
@@ -54,6 +63,18 @@ public class AudioData {
 			}
 			return array;
 		}
+	}
+	
+	public int getNumFFT() {
+		if(numFFT == null) {
+			if(getFftAbsolute() != null) {
+				//TODO getFFTLength() better have the updated FFT length
+				numFFT = getFftAbsolute().length / getFftLength();
+			} else {
+				return 0;
+			}
+		}
+		return numFFT;
 	}
 	
 	public AudioFormat getFormat() {
@@ -132,14 +153,6 @@ public class AudioData {
 		this.normalizedFrequencies = normalizedFrequencies;
 	}
 
-	public Double[] getFftCepstrum() {
-		return fftCepstrum;
-	}
-
-	public void setFftCepstrum(Double[] fftCepstrum) {
-		this.fftCepstrum = fftCepstrum;
-	}
-
 	public void setFftInverseTest(Double[] fftData) {
 		fftInverseTest = fftData;
 		// TODO Auto-generated method stub
@@ -173,4 +186,28 @@ public class AudioData {
 		this.dataHanned = true;
 	}
 
+	public Double[] getFftLowPassAbsolute() {
+		return fftLowPassAbsolute;
+	}
+
+	public void setFftLowPassAbsolute(Double[] fftLowPassAbsolute) {
+		this.fftLowPassAbsolute = fftLowPassAbsolute;
+	}
+	
+	public List<Double> getSpectralFlux() {
+		return spectralFlux;
+	}
+
+	public void setSpecralFlux(List<Double> spectralFlux) {
+		// TODO Auto-generated method stub
+		this.spectralFlux = spectralFlux;
+	}
+	
+	public List<Integer> getOnsets() {
+		return onsets;
+	}
+
+	public void setOnsets(List<Integer> onsets) {
+		this.onsets = onsets;
+	}
 }

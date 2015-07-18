@@ -42,25 +42,27 @@ public class Main extends Application {
     Button captureButton;
     Button openButton;
     Button displayFFTButton;
-    Double[] absolute;
     AudioData audioData;
-	private int fftLength;
-	private int fftArrayLength;
-	private byte[] capturedAudio;
-	private Graph acGraph;
+//	private Graph acGraph;
+    private Graph centerGraph;
+    
 	private Graph fftGraph;
 		
   //  @SuppressWarnings({ "unchecked", "rawtypes", "unused" })
 	@Override public void start(Stage stage) {
         stage.setTitle("Signal Processing Senior Project");       
         
-        acGraph = new Graph("Autocorrelation", "Nth Sample", "Power");
+//        acGraph = new Graph("Autocorrelation", "Nth Sample", "Power");
+        centerGraph = new Graph("Spectral Flux", "Nth sample", "Power");
         fftGraph = new Graph("FFT", "Nth Sample", "Power");
+        
+        
         
        	BorderPane border = new BorderPane();
     	HBox box = addHBox();
     	border.setTop(box);
-    	border.setCenter(acGraph);
+//    	border.setCenter(acGraph);
+    	border.setCenter(centerGraph);
     	border.setBottom(fftGraph);
     	
     	Scene scene = new Scene(border,800,600);
@@ -108,7 +110,7 @@ public class Main extends Application {
 	 * of the current window and the average of the next window.
 	 * @return
 	 */
-	public List<Integer> findPeaks(List<Number> signal, int windowLength, int firstPeak, double zAllowance) {	
+	public List<Integer> findPeaks(List<Double> signal, int windowLength, int firstPeak, double zAllowance) {	
 	/*	if(true) {
 			return findPeaks(signal, firstPeak, windowLength);
 		}*/
@@ -349,10 +351,7 @@ public class Main extends Application {
 		processSignal(audioData, null);
     }
     
-    private void processSignal(AudioData audioData, File file) {
-    	// Display Original Signal
-		//updateGraph(audioData.getOriginalSignal());
-		
+    private void processSignal(AudioData audioData, File file) {		
 		// Play the data
 		playClip(audioData.getSampledData(), audioData.getFormat());
 		
@@ -361,155 +360,67 @@ public class Main extends Application {
 	    	writeToFile(audioData.getSampledData(), file, audioData.getFormat());
 		}
 		
-		double overlap = 0.5;
-		int fftLength = 1024;//8192;
-				
-		
-		ProcessSignal ps = new ProcessSignal(audioData, overlap, fftLength);
+		ProcessSignal ps = new ProcessSignal(audioData, 
+				0.5 /*overlap of FFTs*/, 1024 /*original fftLength */); //8192
 		ps.process();
-		//absolute = audioData.getFftAbsolute();
-		//absolute = audioData.getFftCepstrum();
-		absolute = audioData.getAutoCorrelationAbsolute();
+		
+		//TODO why is audioData being passed in?
 		this.audioData = audioData;
 		
-		byte[] data = audioData.getSampledData();
-		
-		if(capturedAudio == null)
-			capturedAudio = audioData.getSampledData();
-/*		else {
-			byte[] data1 = audioData.getSampledData();
-			if(data1.length != capturedAudio.length)
-				System.out.println("Not the same length");
-			else {
-				for (int i = 0; i < capturedAudio.length; i++) {
-					if(data1[i] != capturedAudio[i])
-						System.out.println("different");
-					System.out.println(data1[i] + " " + capturedAudio[i]);
-				}
-			}
-			System.exit(0);
-		}
-*/		
+		//TODO ensure multiple reads resets the data appropriately. I think it is.
 		
 		
-/*		System.out.println("Print first");
-		Complex[] complex = audioData.getComplexData();
-		
-		int[] complexData = new int[complex.length];
-		for(int i = 0; i < complex.length; i++) {
-			complexData[i] = (int) complex[i].absolute();
-		}
-		
-		updateGraph(complexData);*/
-	/*	
-		Double[] dbls = audioData.getFftInverseTest();
-		int[] invtest = new int[dbls.length];
-		for(int i = 0; i < dbls.length; i++) {
-			invtest[i] = dbls[i].intValue();
-		}
-		
-		updateGraph(invtest);
-*/		
-		/*
-		try {
-			Thread.sleep(3000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		System.out.println("Print next");
-		updateGraph(audioData.getFftInverseTest());
-		*/
-/*		if(true)
-			return;
-*/		
-		
-		
-		
-	//	numFFT = audioData.getFftAbsolute().length / audioData.getFftLength();
-		//fftArrayLength = audioData.getFftAbsolute().length;
-		//fftArrayLength = audioData.getFftCepstrum().length;
-		fftArrayLength = audioData.getAutoCorrelationAbsolute().length;
-		this.fftLength = audioData.getFftLength() * 2;
-		
-
-/*		
-		for(int i = 0; i < numFFT; i++) {
-			updateGraph(Arrays.copyOfRange(absolute, fftStart, fftEnd));
-			fftStart += fftLength;
-			fftEnd += fftLength;
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-*/		
-														/*Double[] frequencies = audioData.getFrequencies();
-														System.out.println("HI" + frequencies.length);
-														updateGraph(audioData.getFrequencies());*/
+		//TODO use this to limit graph indexing, etc.
+		//	data.getNumFFT();
 													
-		//updateGraph(audioData.getNormalizedFrequencies());
-		/*for(Double d : frequencies) {
-			System.out.println("F:" + d);
-		}*/
 		
+		//TODO possibly show frequencies, normalizedFrequencies, and note names in a graph.
 		
-	//	String[] notes = audioData.getNoteNames(); 
-/*		for(String note : audioData.getNoteNames()) {
-			System.out.print(note + " ");
-		}
-*/  
-													/*		String lastNote = "";
-															String[] notes = audioData.getNoteNames();
-															for(int i = 0; i < frequencies.length; i++) {
-																System.out.print(frequencies[i] + " " + notes[i] + " ");
-																if (!lastNote.equals(notes[i])) {
-																	System.out.println();
-																}
-																lastNote = notes[i];
-															}
-*/		
+		//TODO show notes where consecutive duplicates are not shown.
+		//ps.printNonConsecutiveNotes(false);
 
-		Complex[] overlapData = audioData.getComplexData();
-		Double[] maxAmp = new Double[absolute.length];
-		double sum = 0;
-		int maxI = 0;
-		for(int i = 0; i < overlapData.length; i+= fftLength) {
-			sum = 0;
-			for(int j = 0; j < fftLength; j++)
-				sum += overlapData[i+j].absolute();
-			maxAmp[maxI] = sum/fftLength;
-			maxI++;
+		//Calculate the amps at time periods
+		Double[] maxAmp = ps.computeAmp();
+		
+		
+		List<Double> spectralFlux = audioData.getSpectralFlux();
+		displayCenterGraph(spectralFlux);
+		
+		//Double fftAbsolute[] = audioData.getFftAbsolute();
+		Double fftLowpass[] = audioData.getFftLowPassAbsolute();
+		
+		/*for(int i = 0; i < fftAbsolute.length;i++) {
+			if(fftAbsolute[i] != fftLowpass[i]) {
+				System.out.println(i + " " + fftAbsolute[i] + "\t" + fftLowpass[i]);
+			}
 		}
+		System.err.println("END OF DIFF!");*/
 		
-		Double fftAbsolute[] = audioData.getFftAbsolute();
 		
-		
-		for(int i = 0; i < absolute.length/this.fftLength; i++) {
-			int start = i * this.fftLength;
-			int end = start + this.fftLength;
-			int index = findMax(Arrays.copyOfRange(absolute, start, end), 10);
-			double freq = ProcessSignal.computeFrequency(index, audioData);
-			String note = FrequencyToNote.findNote(freq);
+		for(int i = 0; i < audioData.getNumFFT(); i++) {
+			//TODO needs to be the updated FFT length.
+			int start = i * audioData.getFftLength();
+			int end = start + audioData.getFftLength();
 			
-			int indexF = findMax(Arrays.copyOfRange(fftAbsolute, start, end), 0);
+			/*int index = findMax(Arrays.copyOfRange(acAbsolute, start, end), 10);
+			double freq = ProcessSignal.computeFrequency(index, audioData);
+			String note = FrequencyToNote.findNote(freq);*/
+			
+			int indexF = findMax(Arrays.copyOfRange(fftLowpass, start, end), 0);
 			double freqF = ProcessSignal.computeFrequency(indexF, audioData);
 			String noteF = FrequencyToNote.findNote(freqF);
 			
-			int baseFI = calculateBaseFrequencyIndex(audioData.getFftAbsolute(), i, 0);
+			int baseFI = calculateBaseFrequencyIndex(fftLowpass, i, 0);
 			double baseF = ProcessSignal.computeFrequency(baseFI, audioData);
 			String baseNote = FrequencyToNote.findNote(baseF);
 			
         	System.out.println("FFT  i: " + i + "Index: " + indexF + " frequency: " + freqF + " note: " + noteF + " maxAmp[i]: " + maxAmp[i]);
-        	System.out.println("AC   i: " + i + "Index: " + index + " frequency: " + freq + " note: " + note + " maxAmp[i]: " + maxAmp[i]);
+        	//System.out.println("AC   i: " + i + "Index: " + index + " frequency: " + freq + " note: " + note + " maxAmp[i]: " + maxAmp[i]);
         	System.out.println("Base i: " + i + "Index: " + baseFI + " frequency: " + baseF + " note: " + baseNote + " maxAmp[i]: " + maxAmp[i]);
         	System.out.println();
 		}
 		//displayAC(0);
-		displayFFt(0);
+		displayFFt(0, fftLowpass);
     }
     
     private String getFreqAndNote(int index) {
@@ -522,10 +433,18 @@ public class Main extends Application {
     	graph.updateList(data);
     }
     
-    private void updateGraph(Graph graph, Number[] data, int index) {
-    	System.out.println(fftArrayLength/fftLength);	
-    	int start = index * fftLength;
-    	int end = start + fftLength;
+    private <T> void updateGraph(Graph graph, List<T> dataList) {
+    	Number[] data = dataList.toArray(new Number[dataList.size()]);
+    	graph.updateList(data);
+    }
+    
+    private <T> void updateGraph(Graph graph, List<T> dataList, int index) {
+    	//number of fft's
+    	Number[] data = dataList.toArray(new Number[dataList.size()]);
+    	
+    	System.out.println(audioData.getFftAbsolute().length / audioData.getFftLength());	
+    	int start = index * audioData.getFftLength();
+    	int end = start + audioData.getFftLength();
     	Number[] range = Arrays.copyOfRange(data, start, end);
     	
     	//System.out.println("Index: " + index + " frequency: " + ProcessSignal.computeFrequency(index, audioData));
@@ -678,19 +597,19 @@ public class Main extends Application {
         nthField.setPrefSize(50, 20);
         nthField.promptTextProperty().set("Nth Graph");
 
-        Button nthAutoCorrelation = new Button("Display AC[N]");
+/*        Button nthAutoCorrelation = new Button("Display AC[N]");
         nthAutoCorrelation.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent arg0) {
 				displayAC(Integer.parseInt(nthField.getText()));
 			}
-		});
+		});*/
 
         Button nthFFT = new Button("Display FFT[N]");
         nthFFT.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent arg0) {
-				displayFFt(Integer.parseInt(nthField.getText()));
+				displayFFt(Integer.parseInt(nthField.getText()), audioData.getFftLowPassAbsolute());
 			}
 		});
         
@@ -711,7 +630,7 @@ public class Main extends Application {
         
         hbox.getChildren().addAll(label1, captureField, captureButton, 
         		label2, openField, openButton, frequencyButton, nthField, 
-        		nthAutoCorrelation, nthFFT, freqIndex, noteAndFreqButton,
+        		/*nthAutoCorrelation,*/ nthFFT, freqIndex, noteAndFreqButton,
         		noteAndFreqField);
         
         return hbox;
@@ -722,28 +641,22 @@ public class Main extends Application {
 		updateGraph(fftGraph, audioData.getFrequencies());
     }
     
-    private void displayFFt(int n) {
-		updateGraph(fftGraph, audioData.getFftAbsolute(), n);
+    private void displayFFt(int n, final Double[] absoluteData) {
+		updateGraph(fftGraph, Arrays.asList(absoluteData), n);
 		//Number[] range = Arrays.copyOfRange(audioData.getFftAbsolute(), start, end);
-		calculateBaseFrequencyIndex(audioData.getFftAbsolute(), n, 0);
+		calculateBaseFrequencyIndex(absoluteData, n, 0);
     }
     
-    private int calculateBaseFrequencyIndex(Number[] fftData, int nth, int startOffset) {
-    	int start = nth * this.fftLength;
-    	int end = start + this.fftLength;
+    private int calculateBaseFrequencyIndex(Double[] fftData, int nth, int startOffset) {
+    	int start = nth * audioData.getFftLength();
+    	int end = start + audioData.getFftLength();
     	int maxI = findMax(fftData, start, end, 0);
     	
     	int subMaxI = maxI - start;
     	
-    	List<Number> data = Arrays.asList(fftData).subList(start, end);
+    	List<Double> data = Arrays.asList(fftData).subList(start, end);
     	List<Integer> peaks = FundamentalFrequency.findPeaks(data, subMaxI, 6, .05);
-    	
-/*    	List<Integer> peaks = findPeaks(data, 7this will depend on sample rate and fftLength,
-    			subMaxI, 0.00013); //This might depend upon the frequency.
-*/    	
-    		//	25, start, end, maxI,0.000013);
-    	
-    	
+    	    	
 		List<Integer> peaks2 = findPeaks(fftData, 25,/*(int) audioData.getFormat().getSampleRate() / audioData.getFftLength(),*/ // A good guess for window size
 				start, end, maxI,0.000013); // 1 std deviation. Really no backing to this
 		
@@ -760,14 +673,22 @@ public class Main extends Application {
 		return (modes.size() >= 1) ? Util.round(Util.average(modes))/*modes.get(0)*/ : -1; //probably replace with average of modes.
     }
     
-    private void displayAC(int n) {
+    private <T> void displayCenterGraph(List<T> data) {
+    	updateGraph(centerGraph, data);
+    }
+    
+    private <T> void displayCenterGraph(int n, List<T> data) {
+		updateGraph(centerGraph, data, n);
+    }
+    
+/*    private void displayAC(int n) {
     	Number[] data = audioData.getAutoCorrelationAbsolute();
     	Number[] logData = new Number[data.length];
     	for(int i = 0; i < data.length; i++) {
     		logData[i] = Math.log10(data[i].doubleValue());
     	}
 		updateGraph(acGraph, logData, n);
-    }
+    }*/
     
 	private void writeToFile(byte[] signalBites, File file, AudioFormat format) {
     	WriteAudioFile toFile = new WriteAudioFile(signalBites, format, file);
@@ -833,99 +754,3 @@ public class Main extends Application {
         launch(args);
     }
 }
-
-/*
-private void readData(boolean readFile, File file) {
-	ByteArrayOutputStream stream;
-	byte[] signalBites;
-	
-	if(readFile) { 
-		ReadAudioFile audio = new ReadAudioFile(file);
-		audio.readFile();
-		stream = audio.getStream();
-		signalBites = stream.toByteArray();
-		format = audio.getFormat();
-	} else {
-    	initializeFormat();
-    	//ByteArrayOutputStream stream = runReadAudio();
-    	startCapture();
-    	try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-    	stopCapture(file);
-    	
-    	//TODO study about Thread.getStackTrace()
-    	stream = audio.getStream();
-    	signalBites = stream.toByteArray();
-    	writeToFile(signalBites, file);
-	}
-	
-	currentSignal = signalBites;
-}
-*/
-
-/*    private void clear() {
-acGraph.clearData();
-fftGraph.clearData();
-}
-*/      
-/*    private void updateGraph(Number[] signal) {
-clear();
-acGraph.updateList(signal);
-*/  	
-/*        //populating the series with data
-int start = 0;// signal.length / 2;
-int end = signal.length;//start + 300;//(bites.length * 17) / 32;
-for(int i = start; i < end; i++) {
-	//fix for 32 bit
-    series.getData().add(new XYChart.Data((i - start), signal[i]));
-    if(i % 100 == 0)
-    	System.out.println((i - start)*2 + " " + bites.length);
-}
-}*/
-
-/*  private void updateGraph(int[] signal) {
-series.getData().clear();
-
-//populating the series with data
-int start = signal.length / 2;
-int end = start + 300;//(bites.length * 17) / 32;
-for(int i = start; i < end; i++) {
-	//fix for 32 bit
-    series.getData().add(new XYChart.Data((i - start), signal[i]));
-    if(i % 100 == 0)
-    	System.out.println((i - start)*2 + " " + bites.length);
-}
-}*/
-
-
-/*    private void displayFFt(int fftNumber, int offStart, int offEnd, int maxQuery) {
-System.out.println(fftArrayLength/fftLength);
-int fftStart = fftNumber * fftLength;
-int fftEnd = fftStart + fftLength;//fftStart + 250;//fftStart + fftLength;
-fftStart += offStart;
-fftEnd -= offEnd;
-
-System.out.println("Displaying FFT start: " + fftStart + " end: " + fftEnd);
-
-//fftEnd -= 2 * (fftLength / 3);
-if(fftStart < fftArrayLength) {
-	Double[] fft = Arrays.copyOfRange(absolute, fftStart, fftEnd);
-	for(int i = 0; i < fft.length; i++)
-
-	
-	System.out.println("Max at " + maxQuery + " is " + fft[maxQuery]);
-	
-	int index = findMax(fft, 10);
-	System.out.println("Index: " + index + " frequency: " + ProcessSignal.computeFrequency(index, audioData));
-	updateGraph(fft);
-	
-//		System.out.println("This won't be accurate for modified lengths. Frequency: " + ProcessSignal.findMax(fft, /*fftLength*fftEnd - fftStart, audioData));
-	fftStart += fftLength;
-	fftEnd += fftLength;
-}
-}
-*/

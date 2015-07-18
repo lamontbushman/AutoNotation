@@ -87,7 +87,7 @@ public class Util {
     	return index;
     }
     
-    public static int maxIndex(List<Number> list, int lowerInc, int upperExc) {
+    public static int maxIndex(List<Double> list, int lowerInc, int upperExc) {
     	Double max = Double.NEGATIVE_INFINITY;
     	int index = -1;
     	for(int i = lowerInc; i < upperExc; i++) {

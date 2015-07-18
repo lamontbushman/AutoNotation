@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FundamentalFrequency {
-	public static int findBottom(List<Number> signal, int currentIndex, int end, RunningWindowStats first, RunningWindowStats second) {
+	public static int findBottom(List<Double> signal, int currentIndex, int end, RunningWindowStats first, RunningWindowStats second) {
 		//probably clear both first and second every time this is called.
 		//also the first time don't use an initialized size of either. Instead calculate the windowLength
 		// As soon as I find the first index greater than the previous use (index - currentIndex) / SOME_CONSTANT or something similar as the windowLength
@@ -56,7 +56,7 @@ public class FundamentalFrequency {
 	/**
 	 * TODO I am going to find out why the pValue is not working when it did before.
 	 */
-	public static int findSignRise(List<Number> signal, int currentIndex, int end, RunningWindowStats first, RunningWindowStats second) {
+	public static int findSignRise(List<Double> signal, int currentIndex, int end, RunningWindowStats first, RunningWindowStats second) {
 		if(!first.isFull() || !second.isFull()) {
 			System.err.println("Errror expecting windows to be full in findSignRise.");
 			//System.exit(1);r
@@ -83,7 +83,7 @@ public class FundamentalFrequency {
 		return currentIndex;// - (first.size() + second.size());
 	}
 	
-	public static int findPeak(List<Number> signal, int curentIndex, int end, int windowLength) {
+	public static int findPeak(List<Double> signal, int curentIndex, int end, int windowLength) {
 		int searchLen = (int) (windowLength * 2 /* 2 */);
 		int endSearch = curentIndex + searchLen;
 		if(endSearch > end) {
@@ -93,7 +93,7 @@ public class FundamentalFrequency {
 		return (index == -1)? end: index;
 	}
 	
-	public static List<Integer> displayVariance(List<Number> signal, int firstPeak, int windowLength, double pSignificance) {
+	public static List<Integer> displayVariance(List<Double> signal, int firstPeak, int windowLength, double pSignificance) {
 		//windowLength = 6;//7, 10
 		windowLength = 7;
 		
@@ -286,7 +286,7 @@ public class FundamentalFrequency {
 	
 	
 	
-	public static List<Integer> findPeaks(List<Number> signal, int firstPeak, int windowLength, double pSignificance) {
+	public static List<Integer> findPeaks(List<Double> signal, int firstPeak, int windowLength, double pSignificance) {
 		List<Integer> peakIndexes = new ArrayList<Integer>();
 		peakIndexes.add(firstPeak); //assuming start is the first peak of concern
 		
