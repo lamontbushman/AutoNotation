@@ -87,7 +87,8 @@ public class Util {
     	return index;
     }
     
-    public static int maxIndex(List<Double> list, int lowerInc, int upperExc) {
+    //TODO study extends versus super
+    public static int maxIndex(List<? extends Number> list, int lowerInc, int upperExc) {
     	Double max = Double.NEGATIVE_INFINITY;
     	int index = -1;
     	for(int i = lowerInc; i < upperExc; i++) {

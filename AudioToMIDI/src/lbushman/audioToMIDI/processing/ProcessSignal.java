@@ -12,24 +12,20 @@ public class ProcessSignal {
 		data.setOverlapPercentage(overlapPercentage);
 		data.setFftLength(fftLength);
 	}
-	
-    public double computeFrequency(int bin) {
-    	return computeFrequency(bin, data);
-    }
-    
-    public static double computeFrequency(int bin, AudioData data) {
-    	return bin * data.getFormat().getSampleRate() / data.getFftLength();
-    }
     
     public void process() {
     	computeComplexAndOverlap(false/*doHann*/);
-    	doProcess();
+    	computeFFtsAndFilter();
+    	
+    	FundamentalFrequency ff = new FundamentalFrequency(data, 
+    			Arrays.asList(data.getFftLowPassAbsolute()));
+    	ff.computeFrequencies();
     	
     	OnsetDetection od = new OnsetDetection(data, Arrays.asList(data.getFftAbsolute()));
     	od.computeOnsets();
-    	
+    	/*
     	OnsetDetection od2 = new OnsetDetection(data, Arrays.asList(data.getFftLowPassAbsolute()));
-    	od2.computeOnsets();
+    	od2.computeOnsets();*/
     	
     	//fftAbsolute();
     	//fftCepstrum();
@@ -144,7 +140,7 @@ public class ProcessSignal {
 	}
 	
 	//TODO ensure complexData is divisible by the fftLength");
-	private void doProcess() {
+	private void computeFFtsAndFilter() {
 		Complex[] complexData = data.getComplexData();
 		int origFFTLength = data.getFftLength();
 		
@@ -184,7 +180,7 @@ public class ProcessSignal {
 		}
 	}
 	
-	public Double[] computeAmp() {
+	public static Double[] computeAmp(AudioData data) {
 		Complex[] overlapData = data.getComplexData();
 		
 		Double[] maxAmp = new Double[data.getNumFFT()/*fftAbsolute.length*/];
@@ -206,17 +202,21 @@ public class ProcessSignal {
 		return maxAmp;
 	}
 	
+	public Double[] computeAmp() {
+		return computeAmp(data);
+	}
+	
 	public void printNonConsecutiveNotes(boolean showFrequencies) {
 		String lastNote = "";
 		String[] notes = data.getNoteNames();
 		
-		Double[] frequencies = null;
+		List<Double> frequencies = null;
 		if(showFrequencies)
 			frequencies = data.getFrequencies();
 		
 		for(int i = 0; i < notes.length; i++) {
 			if(showFrequencies)
-				System.out.print(frequencies[i] + " " + notes[i] + " ");
+				System.out.print(frequencies.get(i) + " " + notes[i] + " ");
 			else
 				System.out.print(notes[i] + " ");
 			

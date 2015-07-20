@@ -18,7 +18,7 @@ public class AudioData {
 	private Double[] fftAbsolute;
 	private Double[] fftLowPassAbsolute;
 //	private Double[] fftCepstrum;
-	private Double[] frequencies;
+	private List<Double> frequencies;
 	private String[] noteNames;
 	private Double[] normalizedFrequencies;
 	private Double[] fftInverseTest;
@@ -129,11 +129,11 @@ public class AudioData {
 		this.fftAbsolute = fftAbsolute;
 	}
 
-	public Double[] getFrequencies() {
+	public List<Double> getFrequencies() {
 		return frequencies;
 	}
 
-	public void setFrequencies(Double[] frequencies) {
+	public void setFrequencies(List<Double> frequencies) {
 		this.frequencies = frequencies;
 	}
 

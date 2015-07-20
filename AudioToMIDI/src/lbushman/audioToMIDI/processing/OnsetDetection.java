@@ -54,7 +54,7 @@ public class OnsetDetection {
 		flux = ProcessSignal.lowPass(flux);
 		data.setSpecralFlux(flux);
 		
-		peaks = FundamentalFrequency.findPeaks(flux, 0, 6, .05);
+		peaks = Peaks.findPeaks(flux, 0, 7, .05);
 		
 		data.setOnsets(peaks);
 	}
@@ -63,7 +63,7 @@ public class OnsetDetection {
 		int base = 0;
 //		int n = 0;
 		int fftLength = data.getFftLength();
-		List<Double> flux = new ArrayList<Double>();
+		List<Double> flux = new ArrayList<Double>(data.getNumFFT());
 
 		while(base + fftLength < ffts.size()) {
 			List<Number> fft1 = ffts.subList(base, base + fftLength);
