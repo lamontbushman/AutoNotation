@@ -15,19 +15,20 @@ public class AudioData {
 	private int fftLength;
 	private boolean dataWindowed;
 	private Complex[] fft;
-	private Double[] fftAbsolute;
+	private List<Double> fftAbsolute;
 	private Double[] fftLowPassAbsolute;
 //	private Double[] fftCepstrum;
 	private List<Double> frequencies;
 	private String[] noteNames;
-	private Double[] normalizedFrequencies;
+	private List<Double> normalizedFrequencies;
 	private Double[] fftInverseTest;
-	private Double[] autoCorrelationAbsolute;
+	private List<Double> autoCorrelationAbsolute;
 	private Integer numFFT;
 	
 	private boolean dataHanned;
 	private List<Double> spectralFlux;
 	private List<Integer> onsets;
+	private Double[] amp;
 	
 	public AudioData(byte[] samples, AudioFormat audioFormat) {
 		format = audioFormat;
@@ -69,7 +70,7 @@ public class AudioData {
 		if(numFFT == null) {
 			if(getFftAbsolute() != null) {
 				//TODO getFFTLength() better have the updated FFT length
-				numFFT = getFftAbsolute().length / getFftLength();
+				numFFT = getFftAbsolute().size() / getFftLength();
 			} else {
 				return 0;
 			}
@@ -121,11 +122,11 @@ public class AudioData {
 		this.dataWindowed = true;
 	}
 	
-	public Double[] getFftAbsolute() {
+	public List<Double> getFftAbsolute() {
 		return fftAbsolute;
 	}
 
-	public void setFftAbsolute(Double[] fftAbsolute) {
+	public void setFftAbsolute(List<Double> fftAbsolute) {
 		this.fftAbsolute = fftAbsolute;
 	}
 
@@ -145,11 +146,11 @@ public class AudioData {
 		this.noteNames = noteNames;
 	}
 
-	public Double[] getNormalizedFrequencies() {
+	public List<Double> getNormalizedFrequencies() {
 		return normalizedFrequencies;
 	}
 
-	public void setNormalizedFrequencies(Double[] normalizedFrequencies) {
+	public void setNormalizedFrequencies(List<Double> normalizedFrequencies) {
 		this.normalizedFrequencies = normalizedFrequencies;
 	}
 
@@ -170,11 +171,11 @@ public class AudioData {
 		this.fft = fft;
 	}
 
-	public Double[] getAutoCorrelationAbsolute() {
+	public List<Double> getAutoCorrelationAbsolute() {
 		return autoCorrelationAbsolute;
 	}
 
-	public void setAutoCorrelationAbsolute(Double[] autoCorrelationAbsolute) {
+	public void setAutoCorrelationAbsolute(List<Double> autoCorrelationAbsolute) {
 		this.autoCorrelationAbsolute = autoCorrelationAbsolute;
 	}
 
@@ -210,4 +211,13 @@ public class AudioData {
 	public void setOnsets(List<Integer> onsets) {
 		this.onsets = onsets;
 	}
+
+	public Double[] getAmp() {
+		return this.amp;
+	}
+	
+	public void setAmp(Double[] amp) {
+		this.amp = amp;
+	}
+
 }

@@ -2,6 +2,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 
 import lbushman.audioToMIDI.processing.Complex;
+import lbushman.audioToMIDI.util.Util;
 
 
 public class TestMe {
@@ -25,7 +26,7 @@ public class TestMe {
 		Complex[] toFft = Arrays.copyOfRange(complexData, 0, complexData.length*2);
 		
 		for(Complex c : toFft) {
-			System.out.println(c);
+			Util.println(c.toString());
 		}
 		
 /*		byte[] bites = new byte[4];
@@ -67,7 +68,7 @@ class GenerateNumbers extends Thread {
 		int i = 0;
 		while(!stopped) {
 			stream.write(i);
-			System.out.print("G:" + i);
+			Util.print("G:" + i);
 			i++;
 		}
 	}	
@@ -87,10 +88,10 @@ class ConsumeNumbers extends Thread {
 	@Override
 	public void run() {
 		while(!stopped) {
-			System.out.println("Size:" + stream.size());
+			Util.println("Size:" + stream.size());
 			byte[] bites = stream.toByteArray();
 			for(int i = 0; i < bites.length; i++) {
-				System.out.print("C:" + (int)bites[i]);
+				Util.println("C:" + (int)bites[i]);
 			}
 		}
 	}	

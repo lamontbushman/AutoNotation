@@ -2,7 +2,16 @@ package lbushman.audioToMIDI.processing;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
+
+import lbushman.audioToMIDI.io.KeySignature;
+import lbushman.audioToMIDI.io.Note;
+import lbushman.audioToMIDI.io.SheetData;
+import lbushman.audioToMIDI.io.SheetNote;
+import lbushman.audioToMIDI.util.Util;
 
 public class ProcessSignal {
 	private AudioData data;
@@ -14,15 +23,79 @@ public class ProcessSignal {
 	}
     
     public void process() {
-    	computeComplexAndOverlap(false/*doHann*/);
-    	computeFFtsAndFilter();
+    	//computeComplexAndOverlap(false/*doHann*/);
+    	long time1 = System.currentTimeMillis();
+    	long time2 = 0;
+    	
+    	computeComplexAndOverlap2(true/*doHann*/);
+    	
+    	time2 = System.currentTimeMillis();
+    	System.out.println("!!!!!!!!!TIME TIME overlap: " + (time2 - time1));
+    	time1 = System.currentTimeMillis();
+    	
+    	computeFFtsAndFilter(); 
+    	
+    	time2 = System.currentTimeMillis();
+    	System.out.println("!!!!!!!!!TIME TIME ffts: " + (time2 - time1));
+    	time1 = System.currentTimeMillis();
+
+    	/*
+    	computeAutoCorrelation();
+    	computeFrequenciesFromAutocorrelation();
+    	
+    	List<Double> lowPassAbsolute = new LinkedList<Double>(); 	
+    	List<Double> fftAbsolute = data.getFftAbsolute();	
+    	
+    	for(int i = 0; i + data.getFftLength() <= data.getFftAbsolute().size(); i+= data.getFftLength()) {
+    		lowPassAbsolute.addAll(
+    				lowPass(fftAbsolute.subList(i, i+ data.getFftLength())));
+    		i+= data.getFftLength();
+    	}
+    	data.setFftLowPassAbsolute(fftAbsolute.toArray(new Double[fftAbsolute.size()]));*/
     	
     	FundamentalFrequency ff = new FundamentalFrequency(data, 
     			Arrays.asList(data.getFftLowPassAbsolute()));
-    	ff.computeFrequencies();
+    	ff.start();
+   
+    	OnsetDetection od = new OnsetDetection(data, data.getFftAbsolute());
+    	od.start();
     	
-    	OnsetDetection od = new OnsetDetection(data, Arrays.asList(data.getFftAbsolute()));
-    	od.computeOnsets();
+    	
+    	//od.computeOnsets();
+     	
+    	try {
+			ff.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+    	
+    	try {
+			od.join();	    	
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+    	
+    	time2 = System.currentTimeMillis();
+    	System.out.println("!!!!!!!!!TIME TIME od and ff: " + (time2 - time1));
+    	time1 = System.currentTimeMillis();
+ 
+    	/*		//Add the last offset
+		for(int j = amps.length - 1; j > 0; j--) {
+			if(amps[j] >= 800) {
+				data.getOnsets().add(j/2);
+				break;
+			}
+		}*/
+    	
+    	
+    	
+    	List<Integer> onsets = data.getOnsets();
+    	processOnsets(onsets);
+		
+    	time2 = System.currentTimeMillis();
+    	System.out.println("!!!!!!!!!TIME TIME process onsets: " + (time2 - time1));
+    	time1 = System.currentTimeMillis();
+		
     	/*
     	OnsetDetection od2 = new OnsetDetection(data, Arrays.asList(data.getFftLowPassAbsolute()));
     	od2.computeOnsets();*/
@@ -34,6 +107,199 @@ public class ProcessSignal {
    // 	setNotenames();
     //	setNormalizedFrequencies();
     }
+
+
+
+	private double getAverageFrequency(List<Double> frequencies, int start, int end) {
+    	List<Double> subFreq = frequencies.subList(start, end);
+		List<Double> modes = Util.mode(subFreq);
+		if(modes.size() != 1) {
+			Util.printErrorln("Expecting only one mode between onsets");
+			//System.exit(1);
+		}
+		if(modes.size() == 0)
+			System.err.println("Zero modes between onsets.");
+		return modes.get(0);
+		
+		//Previous ideas for getting frequency.
+		/*int middle = (previous + (current - previous) / 2) * 2;
+		double freqMode = frequencies.get(middle);*/
+		/*int last = current * 2;
+   		freqMode = frequencies.get(last);*/
+    }
+    
+	private void processOnsets(List<Integer> onsets) {
+		Iterator<Integer> onsetIt = onsets.iterator();
+    	
+		List<Note> notes = new LinkedList<Note>();
+    	List<Double> frequencies = data.getNormalizedFrequencies();
+    	List<Integer> timeBetweenNotes = new LinkedList<Integer>();
+    	int totalDiff = 0;
+    	
+    	Integer previous = null;
+    	Integer current = null;
+    	
+    	if(onsetIt.hasNext())
+    		previous = onsetIt.next() * 2;
+    	
+    	//TODO find when the last note ends!!! Or guess later based off of music info.
+    	
+    	
+    	while(onsetIt.hasNext()) {
+    		current = onsetIt.next() * 2;
+    		double freqMode = getAverageFrequency(frequencies, previous, current);
+    		Note note = FrequencyToNote.findNote(freqMode);
+    		
+    		if(note.getName() == Note.INVALID) {
+    			System.err.println("Removed invalid note at: " + current);
+    			onsetIt.remove();
+    			continue;
+    		}
+    		
+    		notes.add(note);
+    		
+    		int difference = current - previous;
+    		timeBetweenNotes.add(difference);
+    		totalDiff += difference;
+    		
+    		//Only for display purposes
+    		System.out.println("[" + previous/2 + " - " + current/2 + "] " + freqMode + "\t" + note);
+    		
+    		previous = current;
+    	}
+  
+		double freqMode = getAverageFrequency(frequencies, previous, frequencies.size());
+		int index = frequencies.lastIndexOf(freqMode);//+ (current * 2);
+		Note note = FrequencyToNote.findNote(freqMode);
+		
+		if(note.getName() == Note.INVALID) {
+			System.err.println("Removed invalid note at last: " + current);
+		} else {
+			notes.add(note);
+			//Only for display purposes
+			System.out.println("[" + previous/2 + " - " + index/2 + "] " + freqMode + "\t" + note);
+
+			int difference = index - previous;
+			timeBetweenNotes.add(difference);
+			totalDiff += difference;
+		}
+		
+		
+		//TODO this is betting on that there exists an exact mode, this can be disastrous if assumption is wrong.
+		List<Integer> modes = Util.mode(timeBetweenNotes);
+		if(modes.size() != 1) {
+			Util.printErrorln("Expecting only one mode for differences between onsets.");
+			//System.exit(1);
+		}
+		//Casting to double for division
+		double mode = modes.get(0);
+		
+		//Round to nearest note durations.
+		List<SheetNote> sheetNotes = new ArrayList<SheetNote>(timeBetweenNotes.size());
+		double numBeats = 0;
+		ListIterator<Integer> diffIt = timeBetweenNotes.listIterator();
+		ListIterator<Note> noteIt = notes.listIterator();
+		Util.println("Refresh");
+		while(diffIt.hasNext()) {
+			//beat duration as small as an eighth note (2).
+			//TODO Somehow make this dynamic.
+			double next = diffIt.next();
+			double noteDuration = Util.fractionCeil(next / mode, 2);
+			SheetNote sn = new SheetNote(noteIt.next(), noteDuration, false); // TODO set last argument some time.
+			sheetNotes.add(sn);
+			numBeats += noteDuration;
+		}
+		
+		double averageNoteDuration = totalDiff / numBeats;
+		//TODO add reasoning behind the divide by 4.
+		double samplesPerNote = averageNoteDuration * data.getFftLength() / 2;
+		double beatsPerSecond = data.getFormat().getSampleRate() / samplesPerNote;
+		beatsPerSecond /= data.getOverlapPercentage(); 
+		int beatsPerMinute = (int) Math.round(beatsPerSecond * 60);
+		 
+		SheetData sd = new SheetData();
+		sd.setBeatsPerMinute(beatsPerMinute);
+		sd.setKeySignature(KeySignature.deriveSignature(notes));
+		
+		
+		//I think this is not the best, because, this averages the individual beat for the whole song.
+		// Including longer notes. The longer notes are less precise.
+		
+/*		ListIterator<SheetNote> sIt = sheetNotes.listIterator();
+		//Store in notes the fractional and the integer (timeBetweenNotes) durations.
+		
+		ListIterator<Integer> dIt = timeBetweenNotes.listIterator();
+		
+		while(sIt.hasNext()) {// && dit.hasNext();
+			if(!dIt.hasNext()) {
+				System.err.println("timeBetweenNotes and sheetNotes are not the same!!");
+			}
+			SheetNote sn = sIt.next();
+			double noteDuration = Util.fractionCeil(dIt.next() / averageNoteDuration, 2);
+			sn.setDuration(noteDuration);
+		}
+		*/
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		sd.setNotes(sheetNotes);
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		//TODO write significant time signatures.
+		sd.setTimeSignatureNumerator(0);
+		sd.setTimeSignatureDenominator(0);
+		
+		System.out.println(sd);
+	}
+	
+	private void computeComplexAndOverlap2(boolean doHann) {
+		int fftLength = data.getFftLength();
+		double overlapPercentage = data.getOverlapPercentage();
+		int[] signal = data.getOriginalSignal();
+		int increment = (int) (fftLength * overlapPercentage);
+		//Rough estimate of new size.
+		List<Complex> complexData = new ArrayList<Complex>((int) ((1/overlapPercentage) * signal.length));
+		
+		List<Double> weights = null;
+		if(doHann) {
+			weights = getHannWeights(fftLength);
+			data.setDataHanned();
+		}
+		data.setDataWindowed();
+		
+		//int windowIndex = 0;
+		//http://dsp.stackexchange.com/questions/15563/what-exactly-is-the-effect-of-a-hann-window-on-the-fft-output
+		for(int i = 0; i <= signal.length - increment; i+= increment) {
+			int hanIndex = 0;
+			for(int j = i; j < i + fftLength; j++) {
+				//System.out.println("w: " + windowIndex + " j:" + j);
+				if(j < signal.length)
+					if(data.isDataHanned())
+						complexData.add(new Complex(hann(hanIndex, signal[j], weights)));
+					else
+						complexData.add(new Complex(signal[j]));
+				else
+					complexData.add(new Complex(0));
+				//windowIndex++;
+				hanIndex++;
+			}
+		}
+		data.setComplexData(complexData.toArray(new Complex[complexData.size()]));
+	}
             	
 	private void computeComplexAndOverlap(boolean doHann) {
 		int fftLength = data.getFftLength();
@@ -139,26 +405,42 @@ public class ProcessSignal {
 		return doubledData;
 	}
 	
+	private void addToFFT(double d, boolean doDouble) {
+		List<Double> fftAbsolute = data.getFftAbsolute();
+		if(fftAbsolute == null) {
+			if(doDouble)
+				data.setFftAbsolute(new ArrayList<Double>(data.getComplexData().length * 2));
+			else 
+				data.setFftAbsolute(new ArrayList<Double>(data.getComplexData().length));
+			fftAbsolute = data.getFftAbsolute();
+		}
+		
+		fftAbsolute.add(d);
+	}
+	
 	//TODO ensure complexData is divisible by the fftLength");
 	private void computeFFtsAndFilter() {
+		int multiply = 2;
+		
 		Complex[] complexData = data.getComplexData();
 		int origFFTLength = data.getFftLength();
 		
 		//Double the size of things
-		data.setFftAbsolute(new Double[complexData.length * 2]);
-		data.setFftLowPassAbsolute(new Double[complexData.length * 2]);
+		data.setFftAbsolute(new ArrayList<Double>(complexData.length * multiply));
+		data.setFftLowPassAbsolute(new Double[complexData.length * multiply]);
 
-		int newFFTLength = origFFTLength * 2;
+		int newFFTLength = origFFTLength * multiply;
 		//TODO Future self this may be the source of your errors.
 		data.setFftLength(newFFTLength);
 		
-		Double[] fftAbsolute = data.getFftAbsolute();
+		List<Double> fftAbsolute = data.getFftAbsolute();
 		Double[] fftLowpass = data.getFftLowPassAbsolute();
 		
 		for(int i = 0; i < complexData.length; i+= origFFTLength) {
 			Complex[] toFft = Arrays.copyOfRange(complexData, i, i + origFFTLength);
 			//Double the length and pad for linear (instead of cyclic) autocorrelation.
-			toFft = doubleAndPad(toFft);
+			if(multiply > 1)
+				toFft = doubleAndPad(toFft);
 			
 			FFT.fftForward(toFft);
 			
@@ -166,44 +448,23 @@ public class ProcessSignal {
 			List<Double> lp = new ArrayList<Double>(toFft.length);//double[toFft.length];
 			for(int j = 0; j < toFft.length; j++) {
 				double absolute = toFft[j].absolute();
-				fftAbsolute[(i*2)+j] = absolute;
-				lp.add(absolute);
+				fftAbsolute.add(absolute);
+				//fftAbsolute[(i*2)+j] = absolute;
+				fftLowpass[(i*multiply)+j] = absolute;		//TODO this is temporarily removing the low pass effectively!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!	
+			//	lp.add(absolute);					//TODO removed this
 			}
 			
+			//TODO this is temporary !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+/*			
 			lp = lowPass(lp);
+			// DO twice maybe
 			
 			for(int j = 0; j < toFft.length; j++) {	
 				fftLowpass[(i*2)+j] = lp.get(j);//lp[j];		//TODO WARNING this is because the FFT was doubled 
 				//In case filter is not applied
 				//fftAbsolute[(i*2)+j] = toFft[j].absolute();
-			}
+			}*/
 		}
-	}
-	
-	public static Double[] computeAmp(AudioData data) {
-		Complex[] overlapData = data.getComplexData();
-		
-		Double[] maxAmp = new Double[data.getNumFFT()/*fftAbsolute.length*/];
-		
-		 //TODO this still needs to be fixed so, I don't have to divide by 2.
-		int fftLength = data.getFftLength() / 2;
-		
-		
-		double sum = 0;
-		int maxI = 0;
-		for(int i = 0; i < overlapData.length; i+= fftLength) {
-			sum = 0;
-			for(int j = 0; j < fftLength; j++)
-				sum += overlapData[i+j].absolute();
-			maxAmp[maxI] = sum/fftLength;
-			maxI++;
-		}
-		
-		return maxAmp;
-	}
-	
-	public Double[] computeAmp() {
-		return computeAmp(data);
 	}
 	
 	public void printNonConsecutiveNotes(boolean showFrequencies) {
@@ -227,6 +488,28 @@ public class ProcessSignal {
 		}
 	}
 	
+	private void computeAutoCorrelation() {
+		List<Complex> complex = Arrays.asList(data.getComplexData());
+		data.setAutoCorrelationAbsolute(new LinkedList<Double>());
+		List<Double> absolutes = data.getAutoCorrelationAbsolute();
+		
+		int fftLength = data.getFftLength();
+		int position = 0;
+		while(position + fftLength <= complex.size()) {
+			absolutes.addAll(Arrays.asList(
+					autoCorrelation(complex.subList(position, position + fftLength).toArray(new Complex[fftLength]))
+					));
+			position += fftLength;
+		}
+		
+		//TODO set a variable in AudioData showing that the FFT was doubled
+		data.setFftLength(fftLength * 2);
+	}
+	
+    private void computeFrequenciesFromAutocorrelation() {
+		
+	}
+	
 	/**
 	 * Assumes complexData is the desired length of data to compute on.
 	 * Warning: It will double the length to compute the FFT length. Thus,
@@ -241,17 +524,16 @@ public class ProcessSignal {
 	private Double[] autoCorrelation(final Complex[] complexData) {
 		//http://stackoverflow.com/questions/3949324/calculate-autocorrelation-using-fft-in-matlab#3950398
 		Complex[] toFFT = doubleAndPad(complexData);
+		
 		Double[] autoCorrelationAbsolute = new Double[toFFT.length];
-		
-		//TODO set a variable in AudioData showing that the FFT was doubled
-		//TODO move this out into the calling function
-		data.setFftLength(toFFT.length * 2);
-		
+				
 		FFT.fftForward(toFFT);
 		
 		for(int j = 0; j < toFFT.length; j++) {
 			//Same as Complex.mult(toFFT[j], toFFT[j].conjugate()) but simpler
-			toFFT[j] = new Complex(toFFT[j].absoluteSquare());
+			double square = toFFT[j].absoluteSquare();
+			addToFFT(Math.sqrt(square), true);
+			toFFT[j] = new Complex(square);
 			//Someone said doing it twice will help
 			//(I think it is supposed to emphasize the peaks)
 			//toFFT[j] = new Complex(toFFT[j].absoluteSquare());
@@ -266,7 +548,7 @@ public class ProcessSignal {
 		}
 		return autoCorrelationAbsolute;
 	}
-	
+		
 	/**
 	 * Computes one cepstrum based on the entire complexData array.
 	 * @param complexData

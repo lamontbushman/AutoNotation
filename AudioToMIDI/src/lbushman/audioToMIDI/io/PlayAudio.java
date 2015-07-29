@@ -9,6 +9,8 @@ import javax.sound.sampled.LineListener;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.LineEvent.Type;
 
+import lbushman.audioToMIDI.util.Util;
+
 
 public class PlayAudio {
 	private boolean stopped = false;
@@ -41,7 +43,7 @@ public class PlayAudio {
 					if(event.getType() == Type.STOP) {
 						clip.close();
 						//stopped = true;
-						System.out.println("Done playing");
+						Util.println("Done playing");
 						//synchronized (PlayAudio.this) {
 						//	PlayAudio.this.notify();
 						//}

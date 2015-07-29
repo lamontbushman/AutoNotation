@@ -1,52 +1,55 @@
 package lbushman.audioToMIDI.processing;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import lbushman.audioToMIDI.util.Util;
 
-public class Peaks {
-	private static int findBottom(List<Double> signal, int currentIndex, int end, RunningWindowStats first, RunningWindowStats second) {
-		/*
-		TODO idea. Maybe clear both first and second.
-		TODO possibly calculate the size for first and second (i.e. the window length)
-		 		As soon as I find the first index greater than the previous use (index - currentIndex) / SOME_CONSTANT or something similar as the windowLength
-				Also maybe compute size of downStats accordingly. I probably need a minimum though. Probably make sample rate large enough or fft small enough 
-		        to keep a reasonable downStats length.
-		TODO what can I don in the eclipse console? Send it commands etc?
-		*/
-		
+public class RiseAndFallPeaks {
+	private static int climbDown(List<Double> signal, int currentIndex, int end) {
 		int index = currentIndex;
-		
-		//TODO size maybe needs to be calculated.
-		RunningWindowStats downStats = new RunningWindowStats(5);
-		int upCount = 0;
 		while(index < end) {
 			if(index == -1 )
 				System.err.println("index is negative!!");
 			
-			downStats.add(signal.get(index));
-			
-			if(second.isFull())
-				first.add(second.peek());
-			else
-				first.add(signal.get(index));
-			
-			if(first.isFull())
-				second.add(signal.get(index));
-			
-			if(index + 1 < end && signal.get(index).doubleValue() <= signal.get(index + 1).doubleValue()) {
-				if(downStats.isFull()) {
-					double zScore = downStats.zScore(signal.get(index + 1));
-					upCount++;
-					//Found bottom as soon as it is a significant difference
-					if(zScore >= 0.001 || upCount == 4) {//0.001 related to a p-value of 0.05
-						return index;
-					}
-				}
-			} else {
-				upCount = 0;
+			double difference = 0;
+			double percentage = 0;
+			if(index + 1 < end) {
+				double second = signal.get(index + 1);
+				difference = second - signal.get(index);
+				percentage = Math.abs(difference / second);
 			}
+			if(index + 1 < end && difference > 0 && percentage > 0.3 /*signal.get(index) < signal.get(index + 1) */) {
+				Util.println("cI: " + currentIndex + " PERCENTAGE: " + percentage);
+				return index;
+			}
+			index++;
+		}
+		return index;
+	}
+	
+	private static int climbUp(List<Double> signal, int currentIndex, int end) {
+		int index = currentIndex;
+		while(index < end) {
+			if(index == -1 )
+				System.err.println("index is negative!!");
+
+			double difference = 0;
+			double percentage = 0;
+			if(index + 1 < end) {
+				double second = signal.get(index + 1);
+				difference = second - signal.get(index);
+				percentage = Math.abs(difference / second);
+			}
+			if(index + 1 < end && difference < 0 /*&& percentage > 0.025*/ /*signal.get(index) < signal.get(index + 1) */) {
+				Util.println("climbUp cI: " + currentIndex + " PERCENTAGE: " + percentage);
+				return index;
+			}
+
+		/*	if(index + 1 < end && signal.get(index).doubleValue() > signal.get(index + 1).doubleValue()) {
+				return index;
+			}*/
+			
 			index++;
 		}
 		return index;
@@ -110,41 +113,36 @@ public class Peaks {
 	 * @param pSignificance
 	 * @return
 	 */
-	public static List<Integer> findPeaks(List<Double> signal, int firstPeak, int windowLength, double pSignificance) {
-		//TODO maybe use LinkedList
-		List<Integer> peakIndexes = new ArrayList<Integer>();
-		int index;
-		if(firstPeak < 0) {
-			index = 0;
-		} else {
-			peakIndexes.add(firstPeak); //assuming start is the first peak of concern
-			index = firstPeak;
-		}
-		
+	public static List<Integer> findPeaks(List<Double> signal/*, int windowLength, double pSignificance*/) {
+		List<Integer> peakIndexes = new LinkedList<Integer>();//TODO maybe use LinkedList
+		int index = 0;		
 		int end = signal.size();
 
-		
+/*		
 		RunningWindowStats firstWindow = new RunningWindowStats(windowLength);
 		RunningWindowStats secondWindow = new RunningWindowStats(windowLength);
-			
+*/				
 		while(index < end) {
-			index = findBottom(signal, index, end, firstWindow, secondWindow);
-			index = findSignRise(signal, index, end, firstWindow, secondWindow);
-			index = findPeak(signal, index, end, windowLength);
+			index = climbUp(signal, index, end);
+			peakIndexes.add(index);
+			index = climbDown(signal, index, end);
+//			index = findBottom(signal, index, end/*, firstWindow, secondWindow*/);
+//			index = findSsignalignRise(signal, index, end/*, firstWindow, secondWindow*/);
+//			index = findPeak(signal, index, end, windowLength);
 
 			//In the case that it missed the peak by a few bins.
 			// Search within a windows length from index. 
-			int offset = (windowLength - 1) / 2;
+/*			int offset = (windowLength - 1) / 2;
 			if(index <= end - offset) //TODO check this logic.
 				index = Util.maxIndex(signal, index - offset, index + offset);
-
+*/
 			//This assumes that the end is not a peak
-			if(index == end) {		
+/*			if(index == end) {		
 				return peakIndexes;
 			} else {
 				peakIndexes.add(index);
 			}
-		}
+*/		}
 		return peakIndexes;
 	}
 }

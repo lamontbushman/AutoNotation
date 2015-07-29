@@ -1,6 +1,6 @@
 package lbushman.audioToMIDI.gui;
 
-
+//Reddit forums
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,6 +50,8 @@ public class Main extends Application {
 	private Graph fftGraph;
 		
 	@Override public void start(Stage stage) {
+		Util.setDebugMode(false);
+		
         stage.setTitle("Signal Processing Senior Project");       
         
 //        acGraph = new Graph("Autocorrelation", "Nth Sample", "Power");
@@ -87,9 +89,22 @@ public class Main extends Application {
 		if(file != null) {
 	    	writeToFile(audioData.getSampledData(), file, audioData.getFormat());
 		}
-		
+		Util.println("Reset2");
 		ProcessSignal ps = new ProcessSignal(audioData, 
-				0.5 /*overlap of FFTs*/, 1024 /*original fftLength */); //8192
+				/*0.120*/ 0.25/*overlap of FFTs*/, 2048 /*original fftLength */); //8192
+		
+		//16384//.25, 4096 moderate both
+		//20480//.20, 4096 better but slower
+		//40960//.20, 8192 better fft, worse spectrum and slower
+		//5120//.20, 1024 horrible fft, not horrible spectrum, slow
+		//2048//.5,  1024 horrible fft, almost perfect spectrum
+		
+		
+		//.5, 4096, great for fft
+		//.25, 1024 really great for spectrum
+		
+		
+		
 		ps.process();
 		
 		//TODO why is audioData being passed in?
@@ -106,54 +121,34 @@ public class Main extends Application {
 		
 		//TODO show notes where consecutive duplicates are not shown.
 		//ps.printNonConsecutiveNotes(false);
-		
-		
+	
 		List<Double> spectralFlux = audioData.getSpectralFlux();
 		displayCenterGraph(spectralFlux);
+		List<Double> normalized = new ArrayList<Double>();
+		
+//		Double[] amp = ProcessSignal.computeAmp(audioData);
+		int i = 0;
+		for(Double d : audioData.getFrequencies()) {
+			Double dd = FrequencyToNote.findFrequency(d);
+			normalized.add(dd);
+			Util.println("[" + i + "] " + dd + "\t" + FrequencyToNote.findNote(dd) /*+ " " + amp[i]*/);
+			i++;
+		}
+		audioData.setNormalizedFrequencies(normalized);
 		
 		//Double fftAbsolute[] = audioData.getFftAbsolute();
 		Double fftLowpass[] = audioData.getFftLowPassAbsolute();
 		
 		/*for(int i = 0; i < fftAbsolute.length;i++) {
 			if(fftAbsolute[i] != fftLowpass[i]) {
-				System.out.println(i + " " + fftAbsolute[i] + "\t" + fftLowpass[i]);
+				Util.println(i + " " + fftAbsolute[i] + "\t" + fftLowpass[i]);
 			}
 		}
 		System.err.println("END OF DIFF!");*/
 		
 		
-		System.out.println("DATA HERE");
-		
-		for(int i = 0; i < audioData.getNumFFT(); i++) {
-			//TODO needs to be the updated FFT length.
-			int start = i * audioData.getFftLength();
-			int end = start + audioData.getFftLength();
-			
-
-			
-			int indexF = findMax(Arrays.copyOfRange(fftLowpass, start, end), 0);
-			double freqF = FundamentalFrequency.computeFrequency(indexF, audioData);
-			String noteF = FrequencyToNote.findNote(freqF);
-			
-			int baseFI = calculateBaseFrequencyIndex(fftLowpass, i, 0);
-			double baseF = FundamentalFrequency.computeFrequency(baseFI, audioData);
-			String baseNote = FrequencyToNote.findNote(baseF);
-		
-			System.out.println(i + " " + baseF + " " + baseNote);
-			
-//        	System.out.println("FFT  i: " + i + "Index: " + indexF + " frequency: " + freqF + " note: " + noteF + " maxAmp[i]: "/* + maxAmp[i]*/);
-        	//System.out.println("AC   i: " + i + "Index: " + index + " frequency: " + freq + " note: " + note + " maxAmp[i]: " + maxAmp[i]);
-      //  	System.out.println("Base i: " + i + "Index: " + baseFI + " frequency: " + baseF + " note: " + baseNote + " maxAmp[i]: " /*+ maxAmp[i]*/);
-  //      	System.out.println();
-		}
 		//displayAC(0);
-		displayFFt(0, fftLowpass);
-    }
-    
-    private String getFreqAndNote(int index) {
-    	double frequency = FundamentalFrequency.computeFrequency(index, audioData);
-    	String closestNote = FrequencyToNote.findNote(frequency);
-    	return frequency + "Hz " + closestNote;
+		displayFFt(0, Arrays.asList(fftLowpass));
     }
     
     private void updateGraph(Graph graph, Number[] data) {
@@ -168,55 +163,21 @@ public class Main extends Application {
     private <T> void updateGraph(Graph graph, List<T> dataList, int index) {
     	Number[] data = dataList.toArray(new Number[dataList.size()]);
     	
-    	System.out.println(audioData.getFftAbsolute().length / audioData.getFftLength());	
     	int start = index * audioData.getFftLength();
     	int end = start + audioData.getFftLength();
     	Number[] range = Arrays.copyOfRange(data, start, end);
     	
     	graph.updateList(range);
     }
-    
-    private int findMax(Number[] data, final Integer dataStart, final Integer dataEnd, int ignoreFirstN) {
-    	int start = dataStart + ignoreFirstN;//114688
-    	//Only search half of the data.
-    	int end = dataStart + (dataEnd - dataStart) / 2;//116736
-    	return Util.maxIndex(data, start, end);
-    }
-        
-    private int findMax(Number[] fft, int ignoreFirstN) {
-    	double max = -1;
-    	int maxIndex = -1;
-    	int start = ignoreFirstN;//toFft.length/4 - 2048; // ignore DC 
-    	int end = fft.length/2;// - 2048- fudge;
-    	
-    	for(int j = start; j <  end; j++) {
-    		if(fft == null)
-    			System.out.println("it is null");
-    		else if(fft[j] == null)
-    			System.out.println("it is null!!");
-    		double test = fft[j].doubleValue();
-    		if(test > max) {
-    			max = test;
-    			maxIndex = j;
-    		}
-    	}
-    	//maximums[i/fftLength] = max;
-    	//4949
-    	//System.out.println("!!!!!!!Max Index: " + maxIndex + "  " + toFft[maxIndex] + " " + toFft[maxIndex].absolute());
-
-    	if(maxIndex == start || maxIndex == end)
-    		System.out.println("ALERT!!! At the beg/end: " + maxIndex);
-    		
-		/*if(indexes.size() == -1 || indexes.size() == 0 || prevIndex != indexes.get(indexes.size()-1));
-			indexes.add(maxIndex);
-		prevIndex = maxIndex;*/
-    	
-    	return maxIndex;
-    }
      
     private void playClip(byte[] signal, AudioFormat format) {
     	PlayAudio play = new PlayAudio(signal, format);
     	play.playClip();	
+    }
+    
+    private void playClip(byte[] signal, AudioFormat format, int begin, int end) {
+    	byte[] subSignal = Arrays.copyOfRange(signal, begin, end);
+    	playClip(subSignal, audioData.getFormat());
     }
     
     private HBox addHBox() {
@@ -328,15 +289,19 @@ public class Main extends Application {
         nthFFT.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent arg0) {
-				displayFFt(Integer.parseInt(nthField.getText()), audioData.getFftLowPassAbsolute());
+//				displayFFt(Integer.parseInt(nthField.getText()), audioData.getAutoCorrelationAbsolute());
+				displayFFt(Integer.parseInt(nthField.getText()), 
+						Arrays.asList(audioData.getFftLowPassAbsolute()));
 			}
 		});
         
         TextField freqIndex = new TextField();
         freqIndex.promptTextProperty().set("Note index");
+        freqIndex.setPrefSize(50, 20);
         
         TextField noteAndFreqField = new TextField("Freq and Note");
         noteAndFreqField.setEditable(false);
+        noteAndFreqField.setPrefSize(50, 20);
         
         Button noteAndFreqButton = new Button("Show Note");
         noteAndFreqButton.setOnAction(new EventHandler<ActionEvent>() {
@@ -347,48 +312,75 @@ public class Main extends Application {
 			}
 		});
         
+        TextField playBeg = new TextField();
+        playBeg.promptTextProperty().set("Beg");
+        playBeg.setPrefSize(50, 20);
+        
+        TextField playEnd = new TextField();
+        playEnd.promptTextProperty().set("End");
+        playEnd.setPrefSize(50, 20);
+        
+        Button playButton = new Button("Play");
+        playButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent arg0) {
+				int begin = Integer.parseInt(playBeg.getText());
+				int end = Integer.parseInt(playEnd.getText());
+				
+				//int originalLen = audioData.getFftLength() / 2;
+				//int overLapLen = originalLen / 2;
+				int len = audioData.getFftLength();
+				
+				double percentage = audioData.getOverlapPercentage() * 2;
+				len *= percentage;
+				
+				begin = begin * len;
+				end = end * len;
+				
+		    	playClip(audioData.getSampledData(), audioData.getFormat(), begin, end);
+			}
+		});
+        
         hbox.getChildren().addAll(label1, captureField, captureButton, 
         		label2, openField, openButton, frequencyButton, nthField, 
         		/*nthAutoCorrelation,*/ nthFFT, freqIndex, noteAndFreqButton,
-        		noteAndFreqField);
+        		noteAndFreqField, playBeg, playEnd, playButton);
         
         return hbox;
     }
     
+    private String getFreqAndNote(int index) {
+    	double frequency = FundamentalFrequency.computeFrequency(index, audioData);
+    	String closestNote = FrequencyToNote.findNote(frequency).toString();
+    	return frequency + "Hz " + closestNote;
+    }
+    
     private void displayFrequencies() {
     	//TODO get its own graph
-		updateGraph(fftGraph, audioData.getFrequencies());
+//		updateGraph(fftGraph, audioData.getFrequencies());
+		updateGraph(fftGraph, audioData.getNormalizedFrequencies());
     }
     
-    private void displayFFt(int n, final Double[] absoluteData) {
-		updateGraph(fftGraph, Arrays.asList(absoluteData), n);
-		//Number[] range = Arrays.copyOfRange(audioData.getFftAbsolute(), start, end);
-		calculateBaseFrequencyIndex(absoluteData, n, 0);
-    }
-    
-    private int calculateBaseFrequencyIndex(Double[] fftData, int nth, int startOffset) {
-    	int start = nth * audioData.getFftLength();
-    	//Only look at half of the FFT.
+    private void displayFFt(int n, final List<Double> absoluteData) {
+		//updateGraph(fftGraph, Arrays.asList(absoluteData), n);
+    	updateGraph(fftGraph, absoluteData, n);
+    	
+		int start = n * audioData.getFftLength();
     	int end = start + (audioData.getFftLength() / 2);
-    	int maxI = findMax(fftData, start, end, 0);
+/*    	List<Double> subList = Arrays.asList(absoluteData).subList(start, end);*/
+    	List<Double> subList = absoluteData.subList(start, end);
     	
-    	int subMaxI = maxI - start;
     	
-    	List<Double> data = Arrays.asList(fftData).subList(start, end);
-    	List<Integer> peaks = Peaks.findPeaks(data, subMaxI, 7, .05);
-    	    	
-		List<Integer> peakDiff = new LinkedList<Integer>();
-		for(int i = 0; i < peaks.size() - 1; i++) {
-			peakDiff.add(peaks.get(i+1) - peaks.get(i));
-		}
-		//This all will not work if the peaks are not exactly correct.
-		List<Integer> modes = Util.mode(peakDiff);
-		if(modes.size() > 1) {
-			System.err.println("You have multiple modes at FFT number: " + nth);
-			//System.exit(1);
-		}
-		return (modes.size() >= 1) ? Util.round(Util.average(modes))/*modes.get(0)*/ : -1;
+		FundamentalFrequency ff = new FundamentalFrequency(audioData, subList);
+		ff.computeFrequency(subList);
+		
+		
+//		Util.println("Fundamental Frequency Index: " + audioData.getFrequencies().get(n));
     }
+
+	//Number[] range = Arrays.copyOfRange(audioData.getFftAbsolute(), start, end);
+	//List<Double> data = Arrays.asList(fftData).subList(start, end);
+    
     
     private <T> void displayCenterGraph(List<T> data) {
     	updateGraph(centerGraph, data);
@@ -457,11 +449,6 @@ public class Main extends Application {
     				audio.getFormat());
     		processSignal(audioData, file);
     		
-    		
-    		
-    		
-
-			
 /*			captureButton.setDisable(false);
 			captureButton.setText("Capture");*/
     	}
@@ -471,3 +458,54 @@ public class Main extends Application {
         launch(args);
     }
 }
+
+
+
+/*private int calculateBaseFrequencyIndex(Double[] fftData, int nth, int startOffset) {
+	int start = nth * audioData.getFftLength();
+	//Only look at half of the FFT.
+	int end = start + (audioData.getFftLength() / 2);
+	int maxI = findMax(fftData, start, end, 0);
+	
+	int subMaxI = maxI - start;
+	
+
+	List<Integer> peaks = Peaks.findPeaks(data, subMaxI, 7, .05);
+	    	
+	List<Integer> peakDiff = new LinkedList<Integer>();
+	for(int i = 0; i < peaks.size() - 1; i++) {
+		peakDiff.add(peaks.get(i+1) - peaks.get(i));
+	}
+	//This all will not work if the peaks are not exactly correct.
+	List<Integer> modes = Util.mode(peakDiff);
+	if(modes.size() > 1) {
+		System.err.println("You have multiple modes at FFT number: " + nth);
+		//System.exit(1);
+	}
+	return (modes.size() >= 1) ? Util.round(Util.average(modes))modes.get(0) : -1;
+}
+*/
+
+/*for(int i = 0; i < audioData.getNumFFT(); i++) {
+	//TODO needs to be the updated FFT length.
+	int start = i * audioData.getFftLength();
+	int end = start + audioData.getFftLength();
+	
+
+	
+	int indexF = findMax(Arrays.copyOfRange(fftLowpass, start, end), 0);
+	double freqF = FundamentalFrequency.computeFrequency(indexF, audioData);
+	String noteF = FrequencyToNote.findNote(freqF);
+	
+	int baseFI = calculateBaseFrequencyIndex(fftLowpass, i, 0);
+	double baseF = FundamentalFrequency.computeFrequency(baseFI, audioData);
+	String baseNote = FrequencyToNote.findNote(baseF);
+
+	System.out.println(i + " " + baseF + " " + baseNote);
+	
+//	System.out.println("FFT  i: " + i + "Index: " + indexF + " frequency: " + freqF + " note: " + noteF + " maxAmp[i]: "/* + maxAmp[i]*);
+	//System.out.println("AC   i: " + i + "Index: " + index + " frequency: " + freq + " note: " + note + " maxAmp[i]: " + maxAmp[i]);
+//  	System.out.println("Base i: " + i + "Index: " + baseFI + " frequency: " + baseF + " note: " + baseNote + " maxAmp[i]: " /*+ maxAmp[i]*);
+//      	System.out.println();
+}
+*/

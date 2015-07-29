@@ -14,6 +14,8 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer.Info;
 import javax.sound.sampled.TargetDataLine;
 
+import lbushman.audioToMIDI.util.Util;
+
 
 public class ReadAudio extends Thread {
 	private boolean stopped;
@@ -92,7 +94,7 @@ public class ReadAudio extends Thread {
 					if(event.getType() == Type.STOP) {
 						clip.close();
 						clipStopped = true;
-						System.out.println("Done playing");
+						Util.println("Done playing");
 						synchronized (ReadAudio.this) {
 							ReadAudio.this.notify();//Probably need to call synchronized method.
 						}
@@ -229,7 +231,7 @@ class OutputThread extends Thread {
 	@Override
 	public void run() {
 		while(!stopped) {
-			System.out.println(out.size());
+			Util.println(out.size()+"");
 			byte[] bites = out.toByteArray();
 			String str;
 			
@@ -264,7 +266,7 @@ class OutputThread extends Thread {
 				
 				if(i % 2 == 0) {
 					if (i != 0)
-						System.out.print(Integer.toHexString(signal) + " ");
+						Util.print(Integer.toHexString(signal) + " ");
 //						System.out.print(signal + " ");
 						/*System.out.println(String.format("%32s",Integer.toBinaryString(signal)).replace(' ', '0'));*/
 					signal = 0;

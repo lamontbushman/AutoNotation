@@ -1,5 +1,8 @@
 package lbushman.audioToMIDI.processing;
 
+import lbushman.audioToMIDI.io.Note;
+import lbushman.audioToMIDI.util.Util;
+
 
 public class FrequencyToNote {
 	private static int midiOffset = 12;
@@ -268,10 +271,25 @@ B0
 	*/
 	private FrequencyToNote() {}
 	
-	public static String toNoteName(int index) {
+	public static Note toNote(int index) {
 		if(index == 0 || index == frequencies.length - 1)
-			return "Out of range";
-		return noteNames[(index - 1) % noteNames.length] + ((index -1) / noteNames.length);
+			return new Note();
+		else {
+			String nameAndKey = noteNames[(index - 1) % noteNames.length];
+			Character name = null;
+			Boolean sharpFlatNull = null;
+			if(nameAndKey.length() > 1) {
+				if(nameAndKey.charAt(1) == '#') {
+					sharpFlatNull = true;
+				} else {
+					sharpFlatNull = false;
+				}
+			}
+			name = nameAndKey.charAt(0);
+			Note note = new Note(name, sharpFlatNull, (index -1) / noteNames.length);
+			return note;
+		}
+		//return noteNames[(index - 1) % noteNames.length] + ((index -1) / noteNames.length);
 	}
 	
 	public static int toMidiNote(int index) {
@@ -296,7 +314,7 @@ B0
 		double devi = Math.abs(diff) / frequencies[index + 1];
 		
 		if(devi < .01) {
-			System.err.println("Found a frequency within 5% of the center between two other frequencies."
+			Util.printErrorln("Found a frequency within 5% of the center between two other frequencies."
 					+ " deviation: " + devi + "frequency: " + frequency + 
 					" lower: " + frequencies[index] + " upper: " + frequencies[index + 1]);
 		}
@@ -314,8 +332,8 @@ B0
 		}
 	}
 	
-	public static String findNote(double frequency) {
-		return toNoteName(findIndex(frequency)) /*+ " " + findIndex(frequency) + " " + frequencies[findIndex(frequency)]*/;
+	public static Note findNote(double frequency) {
+		return toNote(findIndex(frequency)) /*+ " " + findIndex(frequency) + " " + frequencies[findIndex(frequency)]*/;
 		//return frequencies[findIndex(frequency)] +"";
 	}
 	

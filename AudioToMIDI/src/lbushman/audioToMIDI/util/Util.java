@@ -88,11 +88,89 @@ public class Util {
     }
     
     //TODO study extends versus super
+    /**
+     * Gets the EARLIEST max index.
+     * @param list
+     * @param lowerInc
+     * @param upperExc
+     * @return
+     */
     public static int maxIndex(List<? extends Number> list, int lowerInc, int upperExc) {
     	Double max = Double.NEGATIVE_INFINITY;
     	int index = -1;
     	for(int i = lowerInc; i < upperExc; i++) {
     		if(list.get(i).doubleValue() > max) {
+    			index = i;
+    			max = list.get(i).doubleValue();
+    		}
+    	}
+    	return index;
+    }
+    
+    //TODO study extends versus super
+    /**
+     * Gets the EARLIEST minimum index.
+     * @param list
+     * @param lowerInc
+     * @param upperExc
+     * @return
+     */
+    public static int minIndex(List<? extends Number> list, int lowerInc, int upperExc) {
+    	Double min = Double.POSITIVE_INFINITY;
+    	int index = -1;
+    	for(int i = lowerInc; i < upperExc; i++) {
+    		if(list.get(i).doubleValue() < min) {
+    			index = i;
+    			min = list.get(i).doubleValue();
+    		}
+    	}
+    	return index;
+    }
+    
+    private static boolean debug = false; 
+    public static void setDebugMode(boolean doDebug) {
+    	debug = doDebug;
+    }
+    
+    public static void printErrorln(String str) {
+    	if(debug) {
+    		System.err.println(str);
+    	}
+    }
+    
+    public static void printError(String str) {
+    	if(debug) {
+    		System.err.print(str);
+    	}
+    }
+    
+    public static void println(String str) {
+    	if(debug) {
+    		System.out.println(str);
+    	}
+    }
+    
+    public static void print(String str) {
+    	if(debug) {
+    		System.out.print(str);
+    	}
+    }
+    
+    /**
+     * Gets the LATEST max index.
+     * @param list
+     * @param lowerInc
+     * @param upperExc
+     * @return
+     */
+    public static int lastMaxIndex(List<? extends Number> list, int lowerInc, int upperExc) {
+    	Double max = Double.NEGATIVE_INFINITY;
+    	int index = -1;
+    	if(lowerInc > list.size() || upperExc > list.size()) {
+    		System.err.println("Error in Util.lastMaxIndex: out of bounds");
+    	}
+    	for(int i = lowerInc; i < upperExc; i++) {
+    		if(list.get(i).doubleValue() >= max) {
     			index = i;
     			max = list.get(i).doubleValue();
     		}
@@ -161,4 +239,108 @@ public class Util {
     	}
     	
     }*/
+
+    /**
+     * Rounds to the nearest fraction 1/oneOver
+     * 
+     * fraction_round(number, oneOver) rounds to the closest 1/(4*oneOver) note, 
+     * which is 1/oneOver of a beat.
+     * 
+     * 
+     * @param number
+     * @param oneOver
+     * @return
+     */
+	public static double fractionCeil(double number, double oneOver) {
+		/*
+			1. multiply by oneOver
+			2. round to whole number
+			3. divide by oneOver
+		*/
+		return Math.ceil(number * oneOver) / oneOver;
+	}
+	
+	/**
+	 * Ordered for efficiency sake
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	private static int gcdOrdered(int a, int b) {		
+		if (b == 0) {
+			return a;
+		} else {
+			return gcd(b, a % b);
+		}
+	}
+	
+	public static int gcd(int a, int b) {
+		if(a >= b) {
+			return gcdOrdered(a,b);
+		} else {
+			return gcdOrdered(b,a);
+		}
+	}
+	
+	/**
+	 * Ordered for efficiency sake
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	private static double gcdErrorOrdered(double a, double b) {
+		Util.println("a: " + a + "\tb: " + b);
+		Util.println((a/b) + "");
+		Util.println(((a-b)/b) + "");
+		
+		if (b == 0) {
+			return a;
+		} else {
+			return gcdErrorOrdered(b, a % b);
+		}
+	}
+	
+	private static double percentError(double a, double b) {
+		double d = Math.abs(a - b) / b;
+		Util.println(d + "");
+		return d;
+	}
+	
+	private static double gcdErrorOrdered2(double num1, double num2) {
+		//a > b
+		double a = num1;
+		double b = num2;
+		percentError(a, b);
+		
+		int start = (int) Math.round(a / b);
+		
+		while(b > 1) {
+			
+			System.out.println();
+		}
+		
+		System.out.println("a: " + a + "\tb: " + b);
+		System.out.println(a/b);
+		System.out.println((a-b)/b);
+		
+		if (b == 0) {
+			return a;
+		} else {
+			return gcdErrorOrdered(b, a % b);
+		}
+	}
+	
+	public static int gcdError(int a, int b, double error) {
+		if(a >= b) {
+			return (int) Math.round(gcdErrorOrdered(a,b));
+		} else {
+			return (int) Math.round(gcdErrorOrdered(b,a));
+		}
+	}
+	
+	public static void main(String args[]) {
+		System.out.println(gcdError(84,171,0));
+		System.out.println(0.5 % 0.3);
+		System.out.println(171 % 84);
+	}
 }
