@@ -2,15 +2,21 @@ package lbushman.audioToMIDI.processing;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import lbushman.audioToMIDI.io.KeySignature;
 import lbushman.audioToMIDI.io.Note;
 import lbushman.audioToMIDI.io.SheetData;
 import lbushman.audioToMIDI.io.SheetNote;
+import lbushman.audioToMIDI.io.TimeSignature;
 import lbushman.audioToMIDI.util.Util;
 
 public class ProcessSignal {
@@ -20,6 +26,10 @@ public class ProcessSignal {
 		data = audioData;
 		data.setOverlapPercentage(overlapPercentage);
 		data.setFftLength(fftLength);
+		double sampleRate = audioData.getFormat().getSampleRate();
+		int	numFFTsInOneSecond = (int) (((sampleRate / fftLength) / overlapPercentage) + 1);
+		data.setNumFftsInOneSecond(numFFTsInOneSecond);
+		//numFFTsInOneSecond = (samplingRate / (newFFTLength / 2)) / overlap; // /2 because of doubling and padding
 	}
     
     public void process() {
@@ -61,6 +71,7 @@ public class ProcessSignal {
     	od.start();
     	
     	
+    	
     	//od.computeOnsets();
      	
     	try {
@@ -75,6 +86,22 @@ public class ProcessSignal {
 			e.printStackTrace();
 		}
     	
+    	BeatDetection bt = new BeatDetection(data, data.getFftAbsolute(), 4);
+    	bt.start();
+    	try {
+			bt.join();
+		} catch (InterruptedException e) {
+			System.err.println("Beat detection was interrupted");
+			e.printStackTrace();
+		}
+    	System.err.println("Beats:");
+    	
+    	data.setBeats(bt.getBeats());
+    	for(Integer i : bt.getBeats()) { 
+    		System.out.print(i + " ");
+    	}
+    	
+    	
     	time2 = System.currentTimeMillis();
     	System.out.println("!!!!!!!!!TIME TIME od and ff: " + (time2 - time1));
     	time1 = System.currentTimeMillis();
@@ -87,15 +114,60 @@ public class ProcessSignal {
 			}
 		}*/
     	
+    	List<Integer> onsets = bt.getBeats();
+    	
+    	List<Integer> differences = new ArrayList<Integer>(onsets.size() / 2);
+    	
+    	int last = onsets.get(0);
+		for(int i = 1; i < onsets.size(); i++) {
+			differences.add(onsets.get(i) - last);
+			last = onsets.get(i);
+		}
+		int average = (int) Math.round(Util.average(differences));
+    	
+		bt.combineBeats(average);
+		onsets = bt.mergedBeats();
+		
+		data.setBeats(onsets);
+		
+    	ListIterator<Integer> it = onsets.listIterator();
+    	Set<Integer> list = new TreeSet<Integer>();
+    	while(it.hasNext()) {
+    		list.add(it.next() / 2);
+    	}
+    	onsets.clear();
+    	onsets.addAll(list);
     	
     	
-    	List<Integer> onsets = data.getOnsets();
-    	processOnsets(onsets);
+    	
+//    	List<Integer> onsets = data.getOnsets();
+    	//TODO Beat difference can probably be validated or improved upon with the BeatDetection
+    	//TODO beadDifference might need to be the smallest beat difference (within reason) in case most frequent doesn't pertain to the down beat.
+    	int beatDifference = processOnsets(onsets);
 		
     	time2 = System.currentTimeMillis();
     	System.out.println("!!!!!!!!!TIME TIME process onsets: " + (time2 - time1));
     	time1 = System.currentTimeMillis();
 		
+    	//TODO use both BeatDetection and onsets to get the first onset. We can validate the two to find better onsets!!!!!! This can improve accuracy a ton!!!
+    	TimeSignature ts = bt.findTimeSignature(onsets.get(0) * 2, beatDifference);
+    	data.setBeats2(bt.getSecondBeats());
+    	data.setBeatsPercent(bt.getBeatPercent());
+    	
+    	bt.combineBeats(beatDifference);
+    	bt.getCombinedBeats();
+    	
+    	TimeSignature ts2 = bt.findTimeSignature2(beatDifference);
+    	
+    	System.out.println("\nTime signature: " + ts.numerator + " / " + ts.denominator);
+    	
+    	System.out.println("Time signature: " + ts2.numerator + " / " + ts2.denominator);
+    	
+    	time2 = System.currentTimeMillis();
+    	System.out.println("!!!!!!!!!TIME TIME process onsets: " + (time2 - time1));
+    	time1 = System.currentTimeMillis();
+    	
+    	
     	/*
     	OnsetDetection od2 = new OnsetDetection(data, Arrays.asList(data.getFftLowPassAbsolute()));
     	od2.computeOnsets();*/
@@ -128,7 +200,7 @@ public class ProcessSignal {
    		freqMode = frequencies.get(last);*/
     }
     
-	private void processOnsets(List<Integer> onsets) {
+	private int processOnsets(List<Integer> onsets) {
 		Iterator<Integer> onsetIt = onsets.iterator();
     	
 		List<Note> notes = new LinkedList<Note>();
@@ -204,7 +276,7 @@ public class ProcessSignal {
 			//beat duration as small as an eighth note (2).
 			//TODO Somehow make this dynamic.
 			double next = diffIt.next();
-			double noteDuration = Util.fractionCeil(next / mode, 2);
+			double noteDuration = next / mode;//Util.fractionCeil(next / mode, 2);
 			SheetNote sn = new SheetNote(noteIt.next(), noteDuration, false); // TODO set last argument some time.
 			sheetNotes.add(sn);
 			numBeats += noteDuration;
@@ -240,30 +312,15 @@ public class ProcessSignal {
 		}
 		*/
 		
-		
-		
-		
-		
-		
-		
-		
-		
 		sd.setNotes(sheetNotes);
-		
-		
-		
-		
-		
-		
-		
-		
-		
 		
 		//TODO write significant time signatures.
 		sd.setTimeSignatureNumerator(0);
 		sd.setTimeSignatureDenominator(0);
 		
 		System.out.println(sd);
+		
+		return (int) mode;
 	}
 	
 	private void computeComplexAndOverlap2(boolean doHann) {

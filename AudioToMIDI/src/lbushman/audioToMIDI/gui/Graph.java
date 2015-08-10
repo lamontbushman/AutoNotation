@@ -12,6 +12,7 @@ import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.chart.XYChart.Data;
+import javafx.scene.chart.XYChart.Series;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
@@ -28,17 +29,32 @@ public class Graph extends BorderPane {
 	private Integer high;
 	FilteredList<Data<Number,Number>> filtList;
 	//ArrayObservableList<Data<Number, Number>> obsList;
+	private Series<Number, Number> series2;
+	private Series<Number, Number> series3;
+	private Number[] data2;
+	private Number[] data3;
 	
 	Graph(String title, String xAxis, String yAxis) 
 	{
 		super();
+		data2 = null;
+		data3 = null;
 		setCenter(title, xAxis, yAxis);
 		setTop();
 	}
 	
 	public void clearData() {
 		series.getData().clear();
+		
 		//getData().clear();
+	}
+	
+	public void clearData2() {
+		series2.getData().clear();
+	}
+	
+	public void clearData3() {
+		series3.getData().clear();
 	}
 	
 	private TextField newField(String hint, String contents) {
@@ -143,10 +159,27 @@ public class Graph extends BorderPane {
 		lineChart.getXAxis().setLabel(xAxis);//frames
 		lineChart.getYAxis().setLabel(yAxis);//amplitude
 		lineChart.setTitle(title);//"Audio Signal"
+		
+
+		
+		lineChart.getStylesheets().add("graphs.css");
         
         series = new XYChart.Series<Number, Number>();
         series.setName(title);//"Original Line"
+        //x500principal? security class?
+        
+        series2 = new XYChart.Series<Number, Number>();
+        series2.setName("Beats");//"Original Line"
+        
+      
+        series3 = new XYChart.Series<Number, Number>();
+        series3.setName("Beats");//"Original Line"
+        
+        
         lineChart.getData().add(series);
+        lineChart.getData().add(series2);
+        lineChart.getData().add(series3);
+        
         setCenter(lineChart);
 	}
 
@@ -170,12 +203,40 @@ public class Graph extends BorderPane {
 		low = begIndex;
 		high = endIndex;
 		clearData();
+		if(data2 != null)
+			clearData2();
+		if(data3 != null)
+			clearData3();
+		
 		for(int i = begIndex; i < endIndex; i++) {
-			if(startZero)
+			if(startZero) {
 				series.getData().add(new Data<Number, Number>(i - begIndex, data[i]));
-			else
+			}
+			else {
 				series.getData().add(new Data<Number, Number>(i, data[i]));
+			}
 		}
+		
+		if(data2 != null)
+		for(int i = begIndex; i < endIndex; i++) {
+			if(startZero) {
+				series2.getData().add(new Data<Number, Number>(i - begIndex, data2[i]));
+			}
+			else {
+				series2.getData().add(new Data<Number, Number>(i, data2[i]));
+			}
+		}
+		
+		if(data3 != null)
+		for(int i = begIndex; i < endIndex; i++) {
+			if(startZero) {
+				series3.getData().add(new Data<Number, Number>(i - begIndex, data3[i]));
+			}
+			else {
+				series3.getData().add(new Data<Number, Number>(i, data3[i]));
+			}
+		}
+		
 		//filtList.setPredicate(between(low,high));
 		
 		
@@ -194,6 +255,22 @@ public class Graph extends BorderPane {
 	
 	public static Predicate<Data<Number, Number>> between(Integer low, Integer high) {
 		return p-> p.getXValue().intValue() >= low && p.getXValue().intValue() <= high;
+	}
+	
+	public void update2List(Number[] signal) {
+		clearData2();
+		data2 = signal;
+		for(int i = 0; i < signal.length; i++) {
+			series2.getData().add(new Data<Number, Number>(i, signal[i])); 
+		}
+	}
+	
+	public void update3List(Number[] signal) {
+		clearData3();
+		data3 = signal;
+		for(int i = 0; i < signal.length; i++) {
+			series3.getData().add(new Data<Number, Number>(i, signal[i])); 
+		}
 	}
 		
 	public void updateList(Number[] signal) {

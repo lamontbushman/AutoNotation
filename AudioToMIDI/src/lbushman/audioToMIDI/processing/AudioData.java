@@ -29,6 +29,10 @@ public class AudioData {
 	private List<Double> spectralFlux;
 	private List<Integer> onsets;
 	private Double[] amp;
+	private int numFFTsInOneSecond;
+	private List<Integer> beats;
+	private List<Integer> beats2;
+	private List<Double> beatsPercent;
 	
 	public AudioData(byte[] samples, AudioFormat audioFormat) {
 		format = audioFormat;
@@ -56,13 +60,16 @@ public class AudioData {
 				arrayIndex++;
 			}
 			return array;
-		} else {
+		} else if(format.getSampleSizeInBits() == 8){
 			int[] array = new int[bites.length];
 			for(int i = 0; i < bites.length; i++) {
 				array[i] = bites[i];
 //				System.out.println(array[i] + "  " + bites[i]);
 			}
 			return array;
+		} else {
+			System.err.println("Unexpected sample size in bits.");
+			return null;
 		}
 	}
 	
@@ -76,6 +83,14 @@ public class AudioData {
 			}
 		}
 		return numFFT;
+	}
+	
+	/**
+	 * only should be called for testing purposes.
+	 * @param numFFT
+	 */
+	public void setNumFFT(int numFFT) {
+		this.numFFT = numFFT;
 	}
 	
 	public AudioFormat getFormat() {
@@ -219,5 +234,36 @@ public class AudioData {
 	public void setAmp(Double[] amp) {
 		this.amp = amp;
 	}
+	
+	public int getNumFftsInOneSecond() {
+		return numFFTsInOneSecond;
+	}
 
+	public void setNumFftsInOneSecond(int numFFTsInOneSecond) {
+		this.numFFTsInOneSecond = numFFTsInOneSecond;
+	}
+	
+	public List<Integer> getBeats() {
+		return beats;
+	}
+
+	public void setBeats(List<Integer> beats) {
+		this.beats = beats;
+	}
+	
+	public List<Integer> getBeats2() {
+		return beats2;
+	}
+
+	public void setBeats2(List<Integer> beats2) {
+		this.beats2 = beats2;
+	}
+	
+	public List<Double> getBeatsPercent() {
+		return beatsPercent;
+	}
+
+	public void setBeatsPercent(List<Double> beatPercent) {
+		this.beatsPercent = beatPercent;
+	}
 }

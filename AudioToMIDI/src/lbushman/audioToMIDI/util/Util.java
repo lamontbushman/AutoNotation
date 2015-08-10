@@ -13,6 +13,14 @@ import java.util.Map;
 public class Util {
 	private Util() {}
 	
+	public static Double sum(List<Double> values) {
+		Double sum = 0.0;
+		for(Double value : values) {
+			sum += value.doubleValue();
+		}
+		return sum;
+	}
+	
     public static double[] convertDoubles(List<Double> doubles)
     {
         double[] ret = new double[doubles.size()];
@@ -186,6 +194,14 @@ public class Util {
     	return total / modes.size();
     }
     
+    public static double averageD(List<Double> modes) {
+    	double total = 0;
+    	for(Number n : modes) {
+    		total += n.doubleValue();
+    	}
+    	return total / modes.size();
+    }
+    
     public static int round(double number) {
     	return (int) Math.round(number);
     }
@@ -258,6 +274,24 @@ public class Util {
 			3. divide by oneOver
 		*/
 		return Math.ceil(number * oneOver) / oneOver;
+	}
+	
+	public static double fractionFloor(double number, double oneOver) {
+		/*
+			1. multiply by oneOver
+			2. round to whole number
+			3. divide by oneOver
+		*/
+		return Math.floor(number * oneOver) / oneOver;
+	}
+	
+	public static double fractionRound(double number, double oneOver) {
+		/*
+			1. multiply by oneOver
+			2. round to whole number
+			3. divide by oneOver
+		*/
+		return Math.round(number * oneOver) / oneOver;
 	}
 	
 	/**
@@ -342,5 +376,15 @@ public class Util {
 		System.out.println(gcdError(84,171,0));
 		System.out.println(0.5 % 0.3);
 		System.out.println(171 % 84);
+	}
+
+	public static List<Integer> findIntegersInSortedRange(List<Integer> ints, int lowerInc, int upperExc) {
+		List<Integer> foundInts = new LinkedList<Integer>();
+		for(Integer i : ints) {
+			if(i >= lowerInc && i < upperExc) {
+				foundInts.add(i);
+			}
+		}
+		return foundInts;
 	}
 }

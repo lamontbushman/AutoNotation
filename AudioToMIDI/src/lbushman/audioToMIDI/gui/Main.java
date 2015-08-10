@@ -92,6 +92,7 @@ public class Main extends Application {
 		Util.println("Reset2");
 		ProcessSignal ps = new ProcessSignal(audioData, 
 				/*0.120*/ 0.25/*overlap of FFTs*/, 2048 /*original fftLength */); //8192
+
 		
 		//16384//.25, 4096 moderate both
 		//20480//.20, 4096 better but slower
@@ -359,6 +360,87 @@ public class Main extends Application {
     	//TODO get its own graph
 //		updateGraph(fftGraph, audioData.getFrequencies());
 		updateGraph(fftGraph, audioData.getNormalizedFrequencies());
+    	//fftGraph.clearData();
+    	
+		Double[] beats = new Double[audioData.getNumFFT()];
+		Double[] beatPerc = new Double[audioData.getNumFFT()];
+		for(int i = 0; i < audioData.getNumFFT()/*audioData.getNormalizedFrequencies().size()*/; i++) {
+			beats[i] = 0.0;
+			beatPerc[i] = 0.0;
+		}
+
+		
+		int count = 0;
+		for(Integer i : audioData.getBeats()) {
+			beats[i] = 900.0;
+		//	beatPerc[i] = (audioData.getBeatsPercent().get(count) - 1.2) * 2500;
+			/*if(beatPerc[i] < 0 ) {
+				beatPerc[i] = 0.0;
+			}*/
+			count++;
+		}
+		
+
+		List<Integer> beatsList = audioData.getBeats();
+		int positionSum = beatsList.get(0);
+		int last = positionSum;
+		double percentSum = audioData.getBeatsPercent().get(0);
+		int percPosition = 0;
+		int sumCount = 1;
+		
+		for(int i = 1; i < beatsList.size(); i++) {
+			int onset = beatsList.get(i);
+			if((onset - last) / 14.0 < .30) {//.30
+				//TODO if percent is above a threshold. Probably not (well that is how I can adjust threshold)
+				percentSum += audioData.getBeatsPercent().get(percPosition /*i*/);
+				positionSum += onset;
+				sumCount++;
+			} else {
+
+/*				if(positionSum == 0) {
+					beatPerc[i] = percentSum / sumCount;
+				} else {
+					
+*/				
+				int index = (int) Math.round(positionSum/ ((double) sumCount)); 
+				if(index == -1)
+					index = positionSum;
+				beatPerc[index] = percentSum /*/ sumCount*/;
+//	}
+
+				percentSum = audioData.getBeatsPercent().get(i /*i*/);
+				positionSum = onset;
+				sumCount = 1;
+			}
+			last = onset;
+			percPosition++;
+		}
+		
+		for(int i = 0; i < beatPerc.length; i++) {
+			beatPerc[i] = (beatPerc[i] - 1.2) * 700/*2500*/;
+			if(beatPerc[i] < 0 ) {
+				beatPerc[i] = 0.0;
+			}
+		}
+		
+		
+		
+   // 	Number[] data = beats.toArray(new Number[dataList.size()]);
+		fftGraph.update2List(beats);
+		fftGraph.update3List(beatPerc);
+		
+		
+		/*Double[] beats2 = new Double[audioData.getNumFFT()];
+		for(int i = 0; i < audioData.getNumFFT()audioData.getNormalizedFrequencies().size(); i++) {
+			beats2[i] = 0.0;
+		}
+		
+		for(Integer i : audioData.getBeats2()) {
+			beats2[i] = 1000.0;
+		}
+		*/
+		
+		//fftGraph.update3List(beats2);
     }
     
     private void displayFFt(int n, final List<Double> absoluteData) {

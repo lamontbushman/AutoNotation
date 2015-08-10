@@ -26,6 +26,7 @@ public class RunningWindowStats {
 	
 	public void clear() {
 		window.clear();
+		total = 0;
 	}
 	
 	public Number peek() {
