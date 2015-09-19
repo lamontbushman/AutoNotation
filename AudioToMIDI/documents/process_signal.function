@@ -1,0 +1,168 @@
+    private void processSignal(AudioData audioData, File file) {
+    	// Display Original Signal
+		//updateGraph(audioData.getOriginalSignal());
+		
+		// Play the data
+		playClip(audioData.getSampledData(), audioData.getFormat());
+		
+		// Save the data
+		if(file != null) {
+	    	writeToFile(audioData.getSampledData(), file, audioData.getFormat());
+		}
+		
+		double overlap = 0.5;
+		int fftLength = 1024;//8192;
+				
+		
+		ProcessSignal ps = new ProcessSignal(audioData, overlap, fftLength);
+		ps.process();
+		//absolute = audioData.getFftAbsolute();
+		//absolute = audioData.getFftCepstrum();
+		//acAbsolute = audioData.getAutoCorrelationAbsolute();
+		this.audioData = audioData;
+		
+		byte[] data = audioData.getSampledData();
+		
+		if(capturedAudio == null)
+			capturedAudio = audioData.getSampledData();
+/*		else {
+			byte[] data1 = audioData.getSampledData();
+			if(data1.length != capturedAudio.length)
+				System.out.println("Not the same length");
+			else {
+				for (int i = 0; i < capturedAudio.length; i++) {
+					if(data1[i] != capturedAudio[i])
+						System.out.println("different");
+					System.out.println(data1[i] + " " + capturedAudio[i]);
+				}
+			}
+			System.exit(0);
+		}
+*/		
+		
+		
+/*		System.out.println("Print first");
+		Complex[] complex = audioData.getComplexData();
+		
+		int[] complexData = new int[complex.length];
+		for(int i = 0; i < complex.length; i++) {
+			complexData[i] = (int) complex[i].absolute();
+		}
+		
+		updateGraph(complexData);*/
+	/*	
+		Double[] dbls = audioData.getFftInverseTest();
+		int[] invtest = new int[dbls.length];
+		for(int i = 0; i < dbls.length; i++) {
+			invtest[i] = dbls[i].intValue();
+		}
+		
+		updateGraph(invtest);
+*/		
+		/*
+		try {
+			Thread.sleep(3000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		System.out.println("Print next");
+		updateGraph(audioData.getFftInverseTest());
+		*/
+/*		if(true)
+			return;
+*/		
+		
+		
+		
+	//	numFFT = audioData.getFftAbsolute().length / audioData.getFftLength();
+		//fftArrayLength = audioData.getFftAbsolute().length;
+		//fftArrayLength = audioData.getFftCepstrum().length;
+		
+		//fftArrayLength = audioData.getAutoCorrelationAbsolute().length;
+		fftArrayLength = audioData.getFftAbsolute().length;
+		
+		
+		this.fftLength = audioData.getFftLength() * 2;
+		
+
+/*		
+		for(int i = 0; i < numFFT; i++) {
+			updateGraph(Arrays.copyOfRange(absolute, fftStart, fftEnd));
+			fftStart += fftLength;
+			fftEnd += fftLength;
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+*/		
+														/*Double[] frequencies = audioData.getFrequencies();
+														System.out.println("HI" + frequencies.length);
+														updateGraph(audioData.getFrequencies());*/
+													
+		//updateGraph(audioData.getNormalizedFrequencies());
+		/*for(Double d : frequencies) {
+			System.out.println("F:" + d);
+		}*/
+		
+		
+	//	String[] notes = audioData.getNoteNames(); 
+/*		for(String note : audioData.getNoteNames()) {
+			System.out.print(note + " ");
+		}
+*/  
+													/*		String lastNote = "";
+															String[] notes = audioData.getNoteNames();
+															for(int i = 0; i < frequencies.length; i++) {
+																System.out.print(frequencies[i] + " " + notes[i] + " ");
+																if (!lastNote.equals(notes[i])) {
+																	System.out.println();
+																}
+																lastNote = notes[i];
+															}
+*/		
+
+		Complex[] overlapData = audioData.getComplexData();
+		Double fftAbsolute[] = audioData.getFftAbsolute();
+		Double[] maxAmp = new Double[fftAbsolute.length];
+		double sum = 0;
+		int maxI = 0;
+		for(int i = 0; i < overlapData.length; i+= fftLength) {
+			sum = 0;
+			for(int j = 0; j < fftLength; j++)
+				sum += overlapData[i+j].absolute();
+			maxAmp[maxI] = sum/fftLength;
+			maxI++;
+		}
+		
+		
+		
+		
+		for(int i = 0; i < fftAbsolute.length/this.fftLength; i++) {
+			int start = i * this.fftLength;
+			int end = start + this.fftLength;
+			
+			/*int index = findMax(Arrays.copyOfRange(acAbsolute, start, end), 10);
+			double freq = ProcessSignal.computeFrequency(index, audioData);
+			String note = FrequencyToNote.findNote(freq);*/
+			
+			int indexF = findMax(Arrays.copyOfRange(fftAbsolute, start, end), 0);
+			double freqF = ProcessSignal.computeFrequency(indexF, audioData);
+			String noteF = FrequencyToNote.findNote(freqF);
+			
+			int baseFI = calculateBaseFrequencyIndex(audioData.getFftAbsolute(), i, 0);
+			double baseF = ProcessSignal.computeFrequency(baseFI, audioData);
+			String baseNote = FrequencyToNote.findNote(baseF);
+			
+        	System.out.println("FFT  i: " + i + "Index: " + indexF + " frequency: " + freqF + " note: " + noteF + " maxAmp[i]: " + maxAmp[i]);
+        	//System.out.println("AC   i: " + i + "Index: " + index + " frequency: " + freq + " note: " + note + " maxAmp[i]: " + maxAmp[i]);
+        	System.out.println("Base i: " + i + "Index: " + baseFI + " frequency: " + baseF + " note: " + baseNote + " maxAmp[i]: " + maxAmp[i]);
+        	System.out.println();
+		}
+		//displayAC(0);
+		displayFFt(0);
+    }

@@ -130,27 +130,127 @@ public class ProcessSignal {
 		
 		data.setBeats(onsets);
 		
-    	ListIterator<Integer> it = onsets.listIterator();
+		
+		
+		//STARTED WORKING HERE
+    	int length = data.getAmp().length;
+    	Double amps[] = data.getAmp();
+    	double averageAmp = Util.averageD(Arrays.asList(amps));
+    	double tolerance = averageAmp * 0.25;
+    	
+    	List<Integer> positionsRemoved = new ArrayList<Integer>();
+    	List<Integer> positionsAdded = new ArrayList<Integer>();
+    	
+    	List<Integer> removeTheseOnsets = new ArrayList<Integer>();
+    	
+    	int firstValidOnset = 0;
+    	int runningCountAboveAverage = 0;
+    	int runningCountBelowAverage = 0;
+    	final int START_RUN_LENGTH = 5;
+    	final int BUFFER = 4;
+     	for(int i = 0; i < data.getAmp().length; i++) {
+     		if(amps[i] >= tolerance) {
+     			runningCountAboveAverage++;
+     			if(runningCountAboveAverage == START_RUN_LENGTH) {
+     				if(firstValidOnset == 0) {
+     					firstValidOnset = i - (START_RUN_LENGTH + BUFFER);
+     					runningCountAboveAverage = 0;
+     				} else {
+     					break;	
+     				}
+     			}
+     		} else {
+     			runningCountAboveAverage = 0;
+     			//If a run of below average amps are reached again before another
+     			// run of above average amps are reached, start over again.
+     			if(firstValidOnset != 0) {
+     				runningCountBelowAverage++;
+     				if(runningCountBelowAverage > START_RUN_LENGTH) {
+     					runningCountBelowAverage = 0;
+     					firstValidOnset = 0;
+     				}
+     			}
+     		}
+     		
+     	}
+     	
+     	for(Integer i : onsets) {
+     		if(i < firstValidOnset) {
+     			removeTheseOnsets.add(i);
+     		}
+     	}
+     	
+     	onsets.removeAll(removeTheseOnsets);
+     	
+    	
+     	
+     	
+     	
+    	for(int i = 0; i < data.getAmp().length; i++) {
+/*    		if(onsets.contains(i)) {
+    			int lower = i;
+    			int higher = i + 4;
+    			boolean doRemove = true;
+    			for( ;lower < higher; lower++) {
+        			if(amps[lower] >= tolerance) {
+        				doRemove = false;
+        				break;
+        			} 				
+    			}
+    			if(doRemove) {
+    				removeTheseOnsets.add(i);
+    			}
+    		}*/
+    		
+    		
+    		if(amps[i] <= tolerance) {
+    			positionsRemoved.add(i);
+    		} else {
+    			positionsAdded.add(i);
+    		}
+    	}
+		
+		
+		
+		//ENDED WORKING HERE TODO move into function
+		
+		
+		
+		List<Integer> halfedOnsets = Util.halfList(onsets);
+    	/*ListIterator<Integer> it = onsets.listIterator();
     	Set<Integer> list = new TreeSet<Integer>();
     	while(it.hasNext()) {
     		list.add(it.next() / 2);
     	}
     	onsets.clear();
-    	onsets.addAll(list);
+    	onsets.addAll(list);*/
     	
     	
     	
 //    	List<Integer> onsets = data.getOnsets();
     	//TODO Beat difference can probably be validated or improved upon with the BeatDetection
     	//TODO beadDifference might need to be the smallest beat difference (within reason) in case most frequent doesn't pertain to the down beat.
-    	int beatDifference = processOnsets(onsets);
+    	int beatDifference = processOnsets(halfedOnsets);
+    	
+    	//TODO time signature happens above.
+    	/*
+    	List<Integer> trackedBeats = beatTracker(onsets, beatDifference / 2);
+    	ListIterator<Integer> it2 = trackedBeats.listIterator();
+    	Set<Integer> list2 = new TreeSet<Integer>();
+    	while(it2.hasNext()) {
+    		list2.add(it2.next() * 2);
+    	}
+    	trackedBeats.clear();
+    	trackedBeats.addAll(list2);//[90, 102, 112, 124, 134, 144, 156, 178, 190, 200, 220, 232, 242, 264, 274, 286, 296, 306, 318, 328, 338, 348, 358, 370, 380, 390, 464]
+    	data.setTrackedBeats(trackedBeats);
+    	*/
 		
     	time2 = System.currentTimeMillis();
     	System.out.println("!!!!!!!!!TIME TIME process onsets: " + (time2 - time1));
     	time1 = System.currentTimeMillis();
 		
     	//TODO use both BeatDetection and onsets to get the first onset. We can validate the two to find better onsets!!!!!! This can improve accuracy a ton!!!
-    	TimeSignature ts = bt.findTimeSignature(onsets.get(0) * 2, beatDifference);
+    	TimeSignature ts = bt.findTimeSignature(onsets.get(0)/*halfedOnsets.get(0) * 2*/, beatDifference);//TODO LDB Am I sure the *2 is what I want
     	data.setBeats2(bt.getSecondBeats());
     	data.setBeatsPercent(bt.getBeatPercent());
     	
@@ -178,10 +278,137 @@ public class ProcessSignal {
     //	setFrequencies();
    // 	setNotenames();
     //	setNormalizedFrequencies();
+    	data.setBeats2(removeTheseOnsets);
+    	
     }
 
 
+    /**
+     * Assumes that the first onset is a whole note. Fails horribly if it isn't.
+     * @param onsets
+     * @param beatDifference
+     * @return
+     */
+	public static List<Integer> beatTracker(List<Integer> onsets, int beatDifference) {
+		final double PERCENT_OFF_ALLOWANCE = 0.2;//0.28572;//0.19;//1.125;
+		
+		if(onsets.isEmpty())
+			return null;
+		
+		List<Integer> beats = new ArrayList<Integer>();
+		//beats.add(onsets.get(0));
+		
+		double runningDifference = beatDifference;
+		boolean previousAdded = false;
+		int candidate = 0;
+		int onset = 0;
+		double error = 0;
+		if(onsets.size() > 1)
+		for(int i = 0; i + 1 < onsets.size(); i++) {
+			candidate = onsets.get(i) + beatDifference;
+			onset = onsets.get(i + 1);
+			error = (Math.abs(candidate - onset) / runningDifference); 
+			
+			if(error < PERCENT_OFF_ALLOWANCE) {
+				beats.add(onsets.get(i));
+				beats.add(onsets.get(i+1));
+				System.out.println(onset + " " + error);
+				previousAdded = true;
+			} else {
+/*				if(previousAdded) {
+					beats.add(onsets.get(i - 1));
+				}
+				previousAdded = false;
+*/			}
+		}
+		
+		return beats;
+	}
 
+	   /**
+     * Assumes that the first onset is a whole note. Fails horribly if it isn't.
+     * @param onsets
+     * @param beatDifference
+     * @return
+     */
+	public static List<Integer> beatTrackerBack(List<Integer> onsets, int beatDifference) {
+		final double PERCENT_OFF_ALLOWANCE = 0.15;//0.19;//0.28572;//0.19;//1.125;
+		//0.4;
+		
+		if(onsets.isEmpty())
+			return null;
+		
+		List<Integer> beats = new ArrayList<Integer>();
+		List<Integer> candidateBeats = new ArrayList<Integer>();
+		
+		int last = onsets.get(onsets.size() - 1) + 1;
+		int first = onsets.get(0);
+/*		for(int i = first; i < last; i+= beatDifference) {
+			beats.add(i);
+		}
+*/		
+		beats.add(onsets.get(0));
+		
+		System.out.println("Errors:");
+		double runningDifference = beatDifference;
+		boolean addedOnset = true;
+		if(onsets.size() > 1)
+		for(int i = 1; i < onsets.size(); i++) {
+			int candidate = 0;
+			if(candidateBeats.isEmpty()) {
+				candidate = beats.get(beats.size() - 1) + beatDifference;
+			} else {
+				candidate = candidateBeats.get(candidateBeats.size() - 1) + beatDifference;
+			}
+				
+			int onset = onsets.get(i);
+			double error = (Math.abs(candidate - onset) / runningDifference); 
+			
+		/*	if(addedOnset)
+				beats.remove(beats.size() - 1);
+*/
+			if(error <= (candidateBeats.size() + 1) * PERCENT_OFF_ALLOWANCE) {
+				if(!candidateBeats.isEmpty()) {
+					beats.addAll(candidateBeats);
+					candidateBeats.clear();
+					if(error > PERCENT_OFF_ALLOWANCE) {
+						System.out.println("Saved from extra allowance.");
+					}					
+				}
+				/*else {
+					if(candidateBeats.isEmpty()) {
+						System.out.println("E: Houston we have a problem!");
+					}
+				}*/
+				
+				beats.add(onset);
+				addedOnset = true;
+				System.out.println(onset + " " + error);
+			} else {
+				candidateBeats.add(candidate);
+				
+				// Don't skip over / give up on this onset yet
+				if(onset > candidate)
+					i--;
+				
+				
+				addedOnset = false;
+				System.out.println(candidate + " E: " + error);
+			}			
+		}
+		
+		/*if(addedOnset)
+			beats.remove(beats.size() - 1);*/
+		
+		if(!candidateBeats.isEmpty()) {
+			beats.addAll(candidateBeats);
+		}
+		
+//		beats.removeAll(onsets);
+		
+		return beats;
+	}
+	
 	private double getAverageFrequency(List<Double> frequencies, int start, int end) {
     	List<Double> subFreq = frequencies.subList(start, end);
 		List<Double> modes = Util.mode(subFreq);

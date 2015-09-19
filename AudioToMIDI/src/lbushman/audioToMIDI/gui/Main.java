@@ -70,6 +70,8 @@ public class Main extends Application {
     	box.requestFocus();
         stage.setScene(scene);
         stage.show();
+/*        openButton.setDisable(false);
+        openButton.fire();*/
     }
 	        
     private void readFromFile(File file) {
@@ -236,6 +238,7 @@ public class Main extends Application {
 		});
 
         Label label2 = new Label("Open File:");
+        openField.setText("maryDown.wav");
         
         openField.textProperty().addListener(new ChangeListener<String>() {
 			@Override
@@ -363,21 +366,28 @@ public class Main extends Application {
     	//fftGraph.clearData();
     	
 		Double[] beats = new Double[audioData.getNumFFT()];
+		Double[] secondBeats = new Double[audioData.getNumFFT()]; 
 		Double[] beatPerc = new Double[audioData.getNumFFT()];
 		for(int i = 0; i < audioData.getNumFFT()/*audioData.getNormalizedFrequencies().size()*/; i++) {
 			beats[i] = 0.0;
 			beatPerc[i] = 0.0;
+			secondBeats[i] = 0.0;
 		}
 
 		
-		int count = 0;
+		int count = 0; //classify as agogic or dynamic or both: An accent of length is called an agogic accent. An accent of loudness is called a dynamic accent.
 		for(Integer i : audioData.getBeats()) {
-			beats[i] = 900.0;
+			beats[i] = 3500.0;
+			
 		//	beatPerc[i] = (audioData.getBeatsPercent().get(count) - 1.2) * 2500;
 			/*if(beatPerc[i] < 0 ) {
 				beatPerc[i] = 0.0;
 			}*/
 			count++;
+		}
+		
+		for(Integer i : audioData.getBeats2()) {
+			secondBeats[i] = 800.0;
 		}
 		
 
@@ -423,11 +433,58 @@ public class Main extends Application {
 			}
 		}
 		
+		List<Integer> trackedBeats = ProcessSignal.beatTracker(audioData.getBeats(), 10);
+		if(false) {
+			fftGraph.updateList(secondBeats);
+		} else if (true){
+			
+			
+			fftGraph.updateList(preparePositionsForDisplay(trackedBeats/*audioData.getTrackedBeats()*/,800.0));
+			
+			
+		}
 		
+/*		
+		int values[] = {46, 66, 78, 84, 114, 124, 134, 144, 154, 166, 206, 218, 226, 280, 292, 300, 354, 372, 386, 392, 416, 426, 436, 446, 456, 466, 502, 514, 522, 558, 570, 578, 614, 624, 634, 644, 656, 676, 686, 696, 706, 718, 738, 748, 758, 770, 780, 802, 812, 822, 830, 844, 876, 888, 900, 910, 938, 946, 950, 960, 972, 1012, 1024, 1032, 1072, 1086, 1096};
+		int output[] = new int[values[values.length - 1] + 1];
+		
+		for(int i = 0; i < values.length; i++) {
+			output[values[i] - 1] = values[i];
+		}
+		
+		System.out.println("Output");
+		for(int i = 0; i < output.length; i++) {
+			System.out.println(output[i]);
+		}
+*/		
 		
    // 	Number[] data = beats.toArray(new Number[dataList.size()]);
-		fftGraph.update2List(beats);
-		fftGraph.update3List(beatPerc);
+		if(true) {
+			fftGraph.update2List(beats);
+		} else if(false) {
+			fftGraph.update2List(beats);
+		} else {
+
+		}
+		
+		if(false) {
+			fftGraph.update3List(secondBeats /*beatPerc*/);			
+		} else if (true) {
+			Double[] amps = audioData.getAmp();
+			Double[] ampsAmped = new Double[amps.length];
+			for(int i = 0; i < ampsAmped.length; i++) {
+				if(i < 130)
+					ampsAmped[i] = amps[i] * 70;//28;
+				else
+					ampsAmped[i] = amps[i] * 70;
+			}
+			
+			fftGraph.update3List(ampsAmped);
+		} else if (false) {
+			trackedBeats.removeAll(audioData.getBeats());
+			fftGraph.update3List(preparePositionsForDisplay(trackedBeats/*audioData.getTrackedBeats()*/,1200.0));
+		}
+
 		
 		
 		/*Double[] beats2 = new Double[audioData.getNumFFT()];
@@ -441,6 +498,17 @@ public class Main extends Application {
 		*/
 		
 		//fftGraph.update3List(beats2);
+    }
+    
+    private Double[] preparePositionsForDisplay(List<Integer> positions, double height) {
+		Double[] graph = new Double[positions.get(positions.size() - 1) + 1];
+		for(int i = 0; i < graph.length; i++) {
+			graph[i] = 0.0;
+		}	
+		for(Integer i : positions) {
+			graph[i] = 800.0;
+		}
+		return graph;
     }
     
     private void displayFFt(int n, final List<Double> absoluteData) {

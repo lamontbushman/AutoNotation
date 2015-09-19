@@ -1,17 +1,51 @@
 package lbushman.audioToMIDI.util;
 
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 
 public class Util {
 	private Util() {}
+
+	public static List<Integer> halfList(List<Integer> values) {
+		ListIterator<Integer> it = values.listIterator();
+		List<Integer> list = new ArrayList<Integer>();
+    	while(it.hasNext()) {
+    		list.add(it.next() / 2);
+    	}
+    	return list;
+	}
+	
+	public static List<Integer> doubleList(List<Integer> values) {
+		ListIterator<Integer> it = values.listIterator();
+		List<Integer> list = new ArrayList<Integer>();
+    	while(it.hasNext()) {
+    		list.add(it.next() * 2);
+    	}
+    	return list;
+	}
+	
+	public static Double[] stretchList(Double[] values) {
+		Double[] newList = new Double[values.length];
+		int j = 0;
+		for(int i = 0; i < newList.length; i++) {
+			if(i % 2 == 0)
+				newList[i] = values[j++];
+			else
+				newList[i] = 0.0;
+		}
+		return newList;
+	}
 	
 	public static Double sum(List<Double> values) {
 		Double sum = 0.0;

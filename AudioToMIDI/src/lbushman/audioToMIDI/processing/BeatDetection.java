@@ -25,7 +25,10 @@ public class BeatDetection extends Thread {
 	//Can try the Bark scale
 	//Or my own scale
 	private final static int NUM_SUBBANDS = 32;//2 //They used 32 then 64	
-	private static final double THRESHOLD = 1.4;//1.55;//1.3 from article //This can also be calculated based on variance
+	private static final double THRESHOLD = 1.55;
+	//1.4; Seems like I was using this for seeing which beats were louder by having neighboring beats
+	//1.55; This works great for 
+	//1.3 from article //This can also be calculated based on variance
 	
 	 //32, 1.2
 	 //64,1.3
