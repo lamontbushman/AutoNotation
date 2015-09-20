@@ -2,6 +2,8 @@ package lbushman.audioToMIDI.processing;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -9,7 +11,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeSet;
 
 import lbushman.audioToMIDI.io.KeySignature;
@@ -295,7 +299,7 @@ public class ProcessSignal {
 		if(onsets.isEmpty())
 			return null;
 		
-		List<Integer> beats = new ArrayList<Integer>();
+		Set<Integer> beats = new HashSet<Integer>();
 		//beats.add(onsets.get(0));
 		
 		double runningDifference = beatDifference;
@@ -322,7 +326,92 @@ public class ProcessSignal {
 */			}
 		}
 		
-		return beats;
+		List<Integer> sortedBeats = new ArrayList<Integer>(beats);
+		sortedBeats.sort(new Comparator<Integer>() {
+		    public int compare(Integer o1, Integer o2) {
+		        return o1.compareTo(o2);
+		    }
+		});
+		
+		List<Integer> missingBeats = new ArrayList<Integer>();
+		
+		TreeSet<Integer> remainingOnsets = new TreeSet<Integer>(onsets);
+		remainingOnsets.removeAll(sortedBeats);
+		
+		
+		final double PERCENT_OFF_ALLOWANCE2 = 2 - PERCENT_OFF_ALLOWANCE;//0.28572;//0.19;//1.125;
+		for(int i = 0; i + 1 < sortedBeats.size(); i++) {
+			int next = sortedBeats.get(i + 1);
+			int current = sortedBeats.get(i);
+			int difference = next - current;
+			double err2 = difference / runningDifference;//If within twice the size of a beat or greater.
+			if(err2 >= PERCENT_OFF_ALLOWANCE2) {
+				double avgNumBeats = difference / runningDifference;
+				double numBeats = (int) Math.round(avgNumBeats);
+				double distance = difference / numBeats;
+				int floorDist = (int) Math.floor(distance);
+				int ceilDist = (int) Math.ceil(distance);
+				int avgDist = (int) Math.round(distance);
+				if(numBeats == 2) {//make sure correct
+					ceilDist = avgDist;
+				}
+				
+				NavigableSet<Integer> subSet = remainingOnsets.subSet(current, false, next, false);
+				
+				int currentPos = current;
+				int totalOnsetsAdded = 0;
+				for(int beat = 0; beat < numBeats - 1; beat++) {
+					candidate = currentPos + avgDist;
+					int added = 0;
+					for (Integer subOnset : subSet) {
+						double err3 = Math.abs(candidate - subOnset) / runningDifference;
+						if(err3 < PERCENT_OFF_ALLOWANCE) { // maybe make this smaller in this instance
+							if(added == 0) {
+								missingBeats.add(subOnset); //Not likely to get here twice in this loop, but I am curious if it ever does.
+								currentPos = subOnset; // maybe not
+								added++;
+								totalOnsetsAdded++;// this logic kind of fails if more than one was added this inner for loop.
+							} else {
+								System.out.println("ERROR: " + added + " onsets. Candidate: " + candidate + " Onset: " + onset);								
+							}
+						}
+					}
+					
+					if(added == 0) {
+						if((beat + totalOnsetsAdded) % 2 == 0) {
+							currentPos += ceilDist;
+						} else {
+							currentPos += floorDist;
+						}
+						missingBeats.add(currentPos);
+					}
+				}
+			}
+		}
+		
+		sortedBeats.addAll(missingBeats);
+		
+		sortedBeats.sort(new Comparator<Integer>() {
+		    public int compare(Integer o1, Integer o2) {
+		        return o1.compareTo(o2);
+		    }
+		});
+		
+		
+		int lastOnset = onsets.get(onsets.size() - 1);
+		int lastBeat = sortedBeats.get(sortedBeats.size() - 1);
+		
+		if(lastOnset > lastBeat) {
+			TreeSet<Integer> onsetSet = new TreeSet<Integer>(onsets);
+			Integer nextOnset = onsetSet.higher(lastBeat);
+			//maybe get new average for beat differences.
+			
+			
+//			SortedSet<Integer> endSet = onsetSet.tailSet(firstNonHandledOnset);
+
+		}
+		
+		return sortedBeats;
 	}
 
 	   /**

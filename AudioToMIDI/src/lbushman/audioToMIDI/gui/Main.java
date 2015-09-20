@@ -4,6 +4,8 @@ package lbushman.audioToMIDI.gui;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -433,15 +435,28 @@ public class Main extends Application {
 			}
 		}
 		
-		List<Integer> trackedBeats = ProcessSignal.beatTracker(audioData.getBeats(), 10);
+		List<Integer> onsets = new ArrayList<Integer>(audioData.getBeats());
+		
+/*		onsets.remove(new Integer(951));
+		onsets.remove(new Integer(947));
+		onsets.add(new Integer(949));
+		onsets.sort(new Comparator<Integer>() {
+		    public int compare(Integer o1, Integer o2) {
+		        return o1.compareTo(o2);
+		    }
+		});*/
+		
+		List<Integer> trackedBeats = ProcessSignal.beatTracker(onsets, 17);
 		if(false) {
 			fftGraph.updateList(secondBeats);
-		} else if (true){
+		} else if (false){
 			
 			
 			fftGraph.updateList(preparePositionsForDisplay(trackedBeats/*audioData.getTrackedBeats()*/,800.0));
 			
 			
+		} else {
+			fftGraph.clearData();
 		}
 		
 /*		
@@ -460,11 +475,11 @@ public class Main extends Application {
 		
    // 	Number[] data = beats.toArray(new Number[dataList.size()]);
 		if(true) {
-			fftGraph.update2List(beats);
+			fftGraph.update2List(preparePositionsForDisplay(onsets, 3500));
 		} else if(false) {
 			fftGraph.update2List(beats);
 		} else {
-
+			fftGraph.clearData2();
 		}
 		
 		if(false) {
@@ -481,8 +496,14 @@ public class Main extends Application {
 			
 			fftGraph.update3List(ampsAmped);
 		} else if (false) {
-			trackedBeats.removeAll(audioData.getBeats());
+			//trackedBeats.removeAll(audioData.getBeats());
 			fftGraph.update3List(preparePositionsForDisplay(trackedBeats/*audioData.getTrackedBeats()*/,1200.0));
+		} else if(false) {
+			Integer actualBeats[] = {46, 66, 81, 86, 116, 126, 136, 146, 156, 166, 206, 221, 226, 266, 281, 286, 326, 346, 361, 366, 396, 406, 416, 426, 436, 446, 486, 501, 506, 546, 561, 566, 586, 596, 606, 616, 626, 646, 656, 666, 676, 686, 706, 716, 726, 736, 746, 766, 776, 786, 796, 806, 821, 831, 841, 851, 866, 876, 886, 896, 936, 951, 956, 996, 1011, 1016};
+		    Double[] numbers = preparePositionsForDisplay(Arrays.asList(actualBeats),1200);
+		    fftGraph.update3List(numbers);
+		} else {
+			fftGraph.clearData3();
 		}
 
 		
@@ -501,12 +522,15 @@ public class Main extends Application {
     }
     
     private Double[] preparePositionsForDisplay(List<Integer> positions, double height) {
+    	if(positions.isEmpty()) {
+    		return null;
+    	}
 		Double[] graph = new Double[positions.get(positions.size() - 1) + 1];
 		for(int i = 0; i < graph.length; i++) {
 			graph[i] = 0.0;
 		}	
 		for(Integer i : positions) {
-			graph[i] = 800.0;
+			graph[i] = height;
 		}
 		return graph;
     }
