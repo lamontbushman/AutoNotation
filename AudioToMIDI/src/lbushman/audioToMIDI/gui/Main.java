@@ -20,6 +20,8 @@ import lbushman.audioToMIDI.io.ReadAudioFile;
 import lbushman.audioToMIDI.io.WriteAudioFile;
 import lbushman.audioToMIDI.processing.AudioData;
 import lbushman.audioToMIDI.processing.Complex;
+import lbushman.audioToMIDI.processing.DownBeatData;
+import lbushman.audioToMIDI.processing.DownBeatDetection;
 import lbushman.audioToMIDI.processing.FrequencyToNote;
 import lbushman.audioToMIDI.processing.FundamentalFrequency;
 import lbushman.audioToMIDI.processing.Peaks;
@@ -79,7 +81,8 @@ public class Main extends Application {
     private void readFromFile(File file) {
 		ReadAudioFile audio = new ReadAudioFile(file);
 		audio.readFile();
-		AudioData audioData = new AudioData(
+		audioData = null;
+		audioData = new AudioData(
 				audio.getStream().toByteArray(),
 				audio.getFormat());
 		processSignal(audioData, null);
@@ -443,18 +446,34 @@ public class Main extends Application {
 		onsets.sort(new Comparator<Integer>() {
 		    public int compare(Integer o1, Integer o2) {
 		        return o1.compareTo(o2);
-		    }
+		    }amps
 		});*/
+		int beatDifference = 16;
+		List<Integer> trackedBeats = ProcessSignal.beatTracker(onsets, beatDifference);
+		List<Double> onsetAmps = ProcessSignal.onsetAmps(onsets, Arrays.asList(audioData.getAmp()), 200);
 		
-		List<Integer> trackedBeats = ProcessSignal.beatTracker(onsets, 17);
+		DownBeatData data = new DownBeatData();
+		data.avgBeatLength = beatDifference;
+		data.beats = trackedBeats;
+		data.onsetAmps = onsetAmps;
+		//data.kSignature;
+		data.onsets = onsets;
+		
+		DownBeatDetection dbDetection = new DownBeatDetection(data);
+		
+		dbDetection.detect();
+		
+		
 		if(false) {
 			fftGraph.updateList(secondBeats);
-		} else if (false){
+		} else if (true){
 			
 			
 			fftGraph.updateList(preparePositionsForDisplay(trackedBeats/*audioData.getTrackedBeats()*/,800.0));
 			
 			
+		} else if(true) {
+			fftGraph.updateList(onsetAmps.toArray(new Double[onsetAmps.size()]));
 		} else {
 			fftGraph.clearData();
 		}
@@ -476,7 +495,7 @@ public class Main extends Application {
    // 	Number[] data = beats.toArray(new Number[dataList.size()]);
 		if(true) {
 			fftGraph.update2List(preparePositionsForDisplay(onsets, 3500));
-		} else if(false) {
+		} else if(true) {
 			fftGraph.update2List(beats);
 		} else {
 			fftGraph.clearData2();

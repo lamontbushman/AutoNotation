@@ -286,6 +286,47 @@ public class ProcessSignal {
     	
     }
 
+    /**
+     * Matches up the highest amp with an onset
+     * Returns a list of amps by beat index
+     */
+    public static List<Double> onsetAmps(List<Integer> onsets, List<Double> amps, double multiplier) {
+    	final double PERCENTAGE = 0.80;
+    	final int DEFAULT_SEARCH_LENGTH = 3;
+    	int searchLen = DEFAULT_SEARCH_LENGTH;
+    	int onsetAmpsListSize = onsets.get(onsets.size() - 1) + 1;
+    	int onsetListSize = onsets.size();
+    	
+    	List<Double> onsetAmps = new ArrayList<Double>();
+    	for(int i = 0; i < onsetAmpsListSize; i++) {
+    		onsetAmps.add(0.0);
+    	}
+    	
+
+    	for(int i = 0; i < onsetListSize; i++) {
+    		int onset = onsets.get(i);
+    		int nextOnset;
+    		if(i + 1 < onsetListSize) {
+    			nextOnset = onsets.get(i + 1);
+    			int diff = nextOnset - onset;
+    			searchLen = (int) Math.round(diff * PERCENTAGE);
+    		} else {
+    			searchLen = searchLen;
+    		}
+    		
+    		int searchEnd = onset + searchLen;
+    		searchEnd = (searchEnd > amps.size()) ? onsetAmpsListSize : searchEnd;
+    		
+    		int maxI = Util.maxIndex(amps, onset, searchEnd);
+    		double max = amps.get(maxI) * multiplier;
+    		/*if(maxI < onsetAmpsListSize)
+    			onsetAmps.set(onset maxI, max); //match up the onset with the max amp. Not the initial amp.
+    		else*/
+    			onsetAmps.set(onset , max); //match up the onset with the max amp. Not the initial amp.
+    	}
+    	
+    	return onsetAmps;
+    }
 
     /**
      * Assumes that the first onset is a whole note. Fails horribly if it isn't.
@@ -294,7 +335,7 @@ public class ProcessSignal {
      * @return
      */
 	public static List<Integer> beatTracker(List<Integer> onsets, int beatDifference) {
-		final double PERCENT_OFF_ALLOWANCE = 0.2;//0.28572;//0.19;//1.125;
+		final double PERCENT_OFF_ALLOWANCE = 0.201;//0.28572;//0.19;//1.125;
 		
 		if(onsets.isEmpty())
 			return null;
@@ -319,6 +360,7 @@ public class ProcessSignal {
 				System.out.println(onset + " " + error);
 				previousAdded = true;
 			} else {
+				previousAdded = false;
 /*				if(previousAdded) {
 					beats.add(onsets.get(i - 1));
 				}
@@ -352,6 +394,15 @@ public class ProcessSignal {
 				int floorDist = (int) Math.floor(distance);
 				int ceilDist = (int) Math.ceil(distance);
 				int avgDist = (int) Math.round(distance);
+				
+				// with an error of .125 it will take 8 notes to be off one whole beat.
+				// with using the ceil or floor, the note is likely to be off.
+				
+				//This one doesn't make sense here!!!! because err can be greater than 1.2
+				if(err2 <= 0.125) {
+					floorDist = ceilDist = avgDist;
+				}
+				
 				if(numBeats == 2) {//make sure correct
 					ceilDist = avgDist;
 				}
@@ -397,25 +448,139 @@ public class ProcessSignal {
 		    }
 		});
 		
+		missingBeats.clear();
 		
-		int lastOnset = onsets.get(onsets.size() - 1);
+		final int lastOnset = onsets.get(onsets.size() - 1);
 		int lastBeat = sortedBeats.get(sortedBeats.size() - 1);
+		double totalBeatDifference = sortedBeats.get(sortedBeats.size() - 1) - sortedBeats.get(0);
+		double newBeatAvg= totalBeatDifference / (sortedBeats.size() - 1);
 		
-		if(lastOnset > lastBeat) {
-			TreeSet<Integer> onsetSet = new TreeSet<Integer>(onsets);
-			Integer nextOnset = onsetSet.higher(lastBeat);
+		TreeSet<Integer> onsetSet = new TreeSet<Integer>(onsets);
+		Integer nextOnset = onsetSet.higher(lastBeat);
+		
+		
+		while(lastOnset > lastBeat && nextOnset != null) {
 			//maybe get new average for beat differences.
+			int diff = (nextOnset - lastBeat);
+			double numBeats = diff / newBeatAvg;
+			double rNumBeats = Math.round(numBeats);
+			double err = Math.abs(numBeats - rNumBeats);
 			
-			
-//			SortedSet<Integer> endSet = onsetSet.tailSet(firstNonHandledOnset);
-
+			if(err < PERCENT_OFF_ALLOWANCE) { //Is nextOnset a "power" of a beat length?
+				double beatDiff = diff / rNumBeats;
+				int rBD = (int) Math.round(beatDiff);
+				int fBD = (int) Math.floor(beatDiff);
+				int cBD = (int) Math.ceil(beatDiff); 
+				
+				// with an error of .125 it will take 8 notes to be off one whole beat.
+				// with using the ceil or floor, the note is likely to be off.
+				if(err <= 0.125) {
+					fBD = cBD = rBD;
+				}
+				
+				if(rNumBeats == 2) {
+					cBD = rBD;
+				}
+				
+				for(int beat = 0; beat < rNumBeats - 1; beat++) {
+					if(beat % 2 == 0) {
+						lastBeat += cBD;
+					} else {
+						lastBeat += fBD;
+					}
+					missingBeats.add(lastBeat);
+				}
+				missingBeats.add(nextOnset);
+				lastBeat = nextOnset;			
+			} else {
+				//lastBeat = lastBeat;
+			}
+			nextOnset = onsetSet.higher(nextOnset);
 		}
+		
+		if(lastBeat < lastOnset) {
+			while(lastBeat < (lastOnset + (2 * newBeatAvg))) {
+				lastBeat += newBeatAvg;
+				missingBeats.add(lastBeat);
+			}
+		}
+		
+		sortedBeats.addAll(missingBeats);
+		
+		sortedBeats.sort(new Comparator<Integer>() {
+		    public int compare(Integer o1, Integer o2) {
+		        return o1.compareTo(o2);
+		    }
+		});
+		
+		missingBeats.clear();
+//		int firstOnset = onsets.get(0);
+		int firstBeat = sortedBeats.get(0);
+		
+		//maybe don't do this again
+		totalBeatDifference = sortedBeats.get(sortedBeats.size() - 1) - sortedBeats.get(0);
+		newBeatAvg= totalBeatDifference / (sortedBeats.size() - 1);
+		
+		onsetSet = new TreeSet<Integer>(onsets);
+		Integer previousOnset = onsetSet.lower(firstBeat);
+		
+		while(previousOnset != null) {//check this logic throughly
+			int diff = firstBeat - previousOnset;
+			double numBeats = diff / newBeatAvg;
+			double rNumBeats = Math.round(numBeats);
+			double err = Math.abs(numBeats - rNumBeats);
+			
+			if(err < PERCENT_OFF_ALLOWANCE) { //Is nextOnset a "power" of a beat length?
+				double beatDiff = diff / rNumBeats;
+				int rBD = (int) Math.round(beatDiff);
+				int fBD = (int) Math.floor(beatDiff);
+				int cBD = (int) Math.ceil(beatDiff); 
+				
+				// with an error of .125 it will take 8 notes to be off one whole beat.
+				// with using the ceil or floor, the note is likely to be off.
+				if(err <= 0.125) {
+					fBD = cBD = rBD;
+				}
+				
+				if(rNumBeats == 2) {
+					cBD = rBD;
+				}
+				
+				for(int beat = 0; beat < rNumBeats - 1; beat++) {
+					if(beat % 2 == 0) {
+						firstBeat -= cBD;
+					} else {
+						firstBeat -= fBD;
+					}
+					missingBeats.add(firstBeat);
+				}
+				missingBeats.add(previousOnset);
+				firstBeat = previousOnset;	
+			} else {
+				//firstBeat = firstBeat
+			}
+			previousOnset = onsetSet.lower(previousOnset);
+		}
+		
+		//int firstOnset = onsets.get(0);
+		while(onsetSet.lower(firstBeat) != null) {
+			firstBeat -= newBeatAvg;
+			missingBeats.add(firstBeat);
+		}
+		
+		sortedBeats.addAll(missingBeats);
+		
+		sortedBeats.sort(new Comparator<Integer>() {
+		    public int compare(Integer o1, Integer o2) {
+		        return o1.compareTo(o2);
+		    }
+		});
 		
 		return sortedBeats;
 	}
 
 	   /**
-     * Assumes that the first onset is a whole note. Fails horribly if it isn't.
+     * Assumes that the first onset is a whole note. FainextOnset = onsetSet.higher(nextOnset);ls horribly if it isn't.
      * @param onsets
      * @param beatDifference
      * @return
