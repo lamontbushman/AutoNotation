@@ -57,13 +57,15 @@ public class DownBeatDetection {
 		TreeSet<Integer> beatSet = new TreeSet<Integer>(beats);
 		NavigableSet<Integer> onsetsBetween = null;
 		int currentOnset = onsetSet.first();
+		int lastOnset = onsetSet.last();
 		Integer currentBeat = beatSet.first();
+		
 		if(currentOnset != currentBeat) {
 			System.out.println("The first two notes are not the same.");
 			System.exit(0);
 		}
 		
-		while(currentBeat != null) {
+		while(currentOnset != lastOnset) {
 			currentBeat = beatSet.higher(currentOnset);
 			while(currentBeat != null && !onsetSet.contains(currentBeat)) {
 				currentBeat = beatSet.higher(currentBeat);
@@ -75,13 +77,14 @@ public class DownBeatDetection {
 			}
 			onsetsBetween = onsetSet.subSet(currentOnset, false, currentBeat, false);
 			if(onsetsBetween.size() == 0) {
-				noteDurations.add(1.0);
+				int beatsBetween = beatSet.subSet(currentOnset, false, currentBeat, false).size();
+				noteDurations.add(beatsBetween + 1.0);
 				currentOnset = currentBeat;
 				//continue; update currentBeat etc.
 			} else {
 				//do complicated math or maybe easy. Or do another call to beatTracker now with half the size and then recursive call this function.
 				int difference = currentBeat - currentOnset;
-				int numBeats = onsetsBetween.size() + 1;
+				int numBeats = onsetsBetween.size() + 1 // wrong should be; beatSet.subSet(currentOnset, false, currentBeat, false).size(); //however I want to save the subset.
 				int avgSubBeatLen = (int) Math.round((difference / ((double)numBeats)) / 2.0);
 				
 				
@@ -132,15 +135,15 @@ public class DownBeatDetection {
 			}
 		}
 		
+		return;
 		
 		
-		
-		onsetsBetween = onsetSet.subSet(currentOnset, false, currentBeat, false);
+		/*onsetsBetween = onsetSet.subSet(currentOnset, false, currentBeat, false);
 		if(onsetSet.contains(currentBeat) && onsetsBetween.size() == 0) {
 			noteDurations.add(1.0);
 		} else if(!onsetSet.contains(currentBeat)) {
 			while(on)
-		}
+		}*/
 		
 	}
 

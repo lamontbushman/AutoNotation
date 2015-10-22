@@ -235,7 +235,7 @@ public class ProcessSignal {
     	//TODO Beat difference can probably be validated or improved upon with the BeatDetection
     	//TODO beadDifference might need to be the smallest beat difference (within reason) in case most frequent doesn't pertain to the down beat.
     	int beatDifference = processOnsets(halfedOnsets);
-    	
+    	System.out.println("LDB: bD: " + beatDifference);
     	//TODO time signature happens above.
     	/*
     	List<Integer> trackedBeats = beatTracker(onsets, beatDifference / 2);
