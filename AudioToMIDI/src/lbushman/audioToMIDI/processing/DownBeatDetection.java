@@ -1,6 +1,7 @@
 package lbushman.audioToMIDI.processing;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.TreeSet;
@@ -12,11 +13,13 @@ public class DownBeatDetection {
 	private final int MAX_BTS_PER_MSURE = 8;
 	private final int MAX_BTS_A_PICKUP_MSURE = 
 			MAX_BTS_PER_MSURE - 1;
+	private double lastNoteError;
+	private double possibleNoteLengths[] = {1/4, /*3/8,*/ 1/2, 3/4, 1, 1.5, 2, 3/*, 4, 5, 6, 7, 8*/};
 	
 	public DownBeatDetection(DownBeatData data) {
 		this.data = data;
 		
-		calculateNoteDurations(data.beats);
+		calculateNoteDurations(data.beats, data.avgBeatLength);
 		List<Double> noteDurations = new ArrayList<Double>();
 		if(data.onsets.size() > 1) { 
 			int firstOnset = data.onsets.get(0);
@@ -51,7 +54,30 @@ public class DownBeatDetection {
 		System.out.println();
 	}
 	
-	private void calculateNoteDurations(List<Integer> beats) {
+	private double calculateNoteDuration(int length, int beatLength) {
+		double fraction = length / (double) beatLength; // test division
+		double error = 0;
+		double leastError = Double.MAX_VALUE;
+		double bestCandidate = -1;
+		for(double candidate : possibleNoteLengths) {
+			error = Math.abs(candidate - fraction) / candidate; // beatLength;
+			if (error < leastError) {
+				leastError = error;
+				bestCandidate = candidate;
+			} else {
+				// In case of a length being between two others exactly, 
+				//   this will give favor to the first.
+				break; 
+			}
+		}
+		if(bestCandidate == -1) {
+			System.out.println("We have a problem");
+		}
+		lastNoteError = leastError;
+		return bestCandidate;
+	}
+	
+	private void calculateNoteDurations(List<Integer> beats, int avgBeatLength) {
 		List<Double> noteDurations = new ArrayList<Double>();
 		TreeSet<Integer> onsetSet = new TreeSet<Integer>(data.onsets);
 		TreeSet<Integer> beatSet = new TreeSet<Integer>(beats);
@@ -59,11 +85,86 @@ public class DownBeatDetection {
 		int currentOnset = onsetSet.first();
 		int lastOnset = onsetSet.last();
 		Integer currentBeat = beatSet.first();
+
+
+/*		Iterator<Integer> onsetIt = data.onsets.iterator();
+		Iterator<Integer>  beatIt = beats.iterator();
+		Integer currOnset;
+		Integer currBeat;
+		while(beatIt.hasNext()) {
+			currBeat = beatIt.next();
+			while(onsetIt.hasNext()) {
+				currOnset = onsetIt.next();
+				if(currOnset )
+			}
+		}*/
+
+		int nBeats = 0;
+		//1. Find first matching onset and beat (first). Assume that the sum of any onsets before is less than a beat length.
+		int onset1 = onsetSet.first();
+		Integer onBeatOnset1 = beatSet.higher(onset1);
+		while(onBeatOnset1 != null && !onsetSet.contains(onBeatOnset1)) {
+			onBeatOnset1 = beatSet.higher(onBeatOnset1);
+		}
+		if(onBeatOnset1 == null) {
+			System.out.println("Error: No beat and onset match");
+		}
+
+		//2. If there are beats before
+		//	NavigableSet<Integer> oneBeatsOnsetsSet = onsetSet.subSet(onset1, true, onBeatOnset1, true);
+		NavigableSet<Integer> oneBeatsOnsetsSet = onsetSet.headSet(onBeatOnset1, true); // guaranteed to have at least one element.	
+		if(oneBeatsOnsetsSet.size() > 1) {
+			// a. Make sure that the sum of any onsets before is less than a beat length.
+			// b. Calculate the onset lengths
+			List<Double> lengths = new ArrayList<Double>();
+			Integer previous = null;
+			double durationSum = 0;
+			for(Integer onset : oneBeatsOnsetsSet) {
+				if(previous != null) {
+					int length = onset - previous;
+					//  i. Divide
+					// ii. "Round" to the nearest stored fraction.
+					double duration = calculateNoteDuration(length, avgBeatLength);
+					lengths.add(duration);
+					durationSum += duration;
+				}
+				previous = onset;
+			}
+			// iii. Make sure total fractions are less than a beat length (add breakpoint for failure testing! Later an assert)
+			if(durationSum >= 1) {
+				System.err.println("Error: Beat matching is probably off. A beat wasn't detected near the beginning of the song.");
+			}
+			// iv. Add lengths to noteDurations
+			noteDurations.addAll(lengths);	
+		}
+		
+
+		//3. Find next matching onset and beat (second). -- calculate the number of beats between first and second!! nBeats
+		//		a. Calculate the onset lengths
+		//			i. Divide (keep the lengths)
+		//		   ii. "Round" to the nearest stored fraction.
+		//		  iii. Make sure total fractions are reasonable within nBeats
+		//				1. (add breakpoint for failure testing!)
+		//					a. This may be a failure in beat detection
+		//					b. Also this may be evidence of a fermata. 
+		//				2. If not exactly nBeats
+		//					a. Fudge the numbers maybe (test later). or test to see if this is reasonable.
+		//						i. Add breakpoint/assert in case
+		//         iv. Add lengths to noteDurations
+		//4. Set first = second
+		//5. Repeat to 3 till there is no more beats above current onset
+		//6. Outside of loop: If there are any more onsets after current beat
+		//		a. Set an alarm breakpoint/assert
+		//7. Calculate length of last onset? based on loudness?
+		//		-- then later when doing measures. Adjust this value. (Need to factor in the first measure to find the last measure length)
+		
+		
 		
 		if(currentOnset != currentBeat) {
 			System.out.println("The first two notes are not the same.");
 			System.exit(0);
 		}
+		
 		
 		while(currentOnset != lastOnset) {
 			currentBeat = beatSet.higher(currentOnset);
