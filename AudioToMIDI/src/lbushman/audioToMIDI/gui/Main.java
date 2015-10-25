@@ -448,7 +448,7 @@ public class Main extends Application {
 		        return o1.compareTo(o2);
 		    }amps
 		});*/
-		int beatDifference = 10;
+		int beatDifference = 16;
 		List<Integer> trackedBeats = ProcessSignal.beatTracker(onsets, beatDifference);
 		List<Double> onsetAmps = ProcessSignal.onsetAmps(onsets, Arrays.asList(audioData.getAmp()), 200);
 		
