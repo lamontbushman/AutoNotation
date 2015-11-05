@@ -24,8 +24,8 @@ public class BeatDetection extends Thread {
 	//Instead we can have varying width subbands according to a linear progression.
 	//Can try the Bark scale
 	//Or my own scale
-	private final static int NUM_SUBBANDS = 32;//2 //They used 32 then 64	
-	private static final double THRESHOLD = 1.55;
+	private final static int NUM_SUBBANDS = 64;//2 //They used 32 then 64									//last at 32
+	private static final double THRESHOLD = 1.65;//1.74														    //and 1.55/1.6
 	//1.4; Seems like I was using this for seeing which beats were louder by having neighboring beats
 	//1.55; This works great for 
 	//1.3 from article //This can also be calculated based on variance
@@ -137,8 +137,7 @@ public class BeatDetection extends Thread {
 	// the energy subbands.
 	private List<List<Double>> calculateRunningAverage(ArrayList<List<Double>> fftsSubbands) {
 		List<List<Double>> averagesAtFFTs = new ArrayList<List<Double>>(fftsSubbands.size());
-		
-		
+
 		//TODO possibly calculate the threshold. The negative seems counter intuitive to me.
 		//THRESHOLD = (-0.0025714*varianceOfWindow)+1.5142857
 		

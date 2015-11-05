@@ -129,8 +129,19 @@ public class ProcessSignal {
 		}
 		int average = (int) Math.round(Util.average(differences));
     	
-		bt.combineBeats(average);
-		onsets = bt.mergedBeats();
+    	
+    	List<Integer> remOnsets = new ArrayList<Integer>();
+    	List<Double> fftAbs = data.getFftAbsolute();
+    	for(int onset : onsets) {
+    		if(onset - 1 > 0 && fftAbs.get(onset-1) > fftAbs.get(onset)) {
+    			remOnsets.add(onset);
+    		}
+    	}
+    	onsets.removeAll(remOnsets);
+    	
+    	//TODO put this back if needed
+		//bt.combineBeats(average);
+		//onsets = bt.mergedBeats();
 		
 		data.setBeats(onsets);
 		
@@ -214,13 +225,31 @@ public class ProcessSignal {
     		}
     	}
 		
-		
+/*		ListIterator<Integer> lit = onsets.listIterator();
+		int prev = 0;
+		while(lit.hasNext()) {
+			int curr = lit.next();
+			if(curr == prev)
+				lit.remove();
+			prev = curr;
+		}*/
 		
 		//ENDED WORKING HERE TODO move into function
 		
 		
-		
 		List<Integer> halfedOnsets = Util.halfList(onsets);
+		
+		
+		ListIterator<Integer> lit2 = halfedOnsets.listIterator();
+		int prev = 0;
+		while(lit2.hasNext()) {
+			int curr = lit2.next();
+			if(curr == prev)
+				lit2.remove();
+			prev = curr;
+		}
+		
+		
     	/*ListIterator<Integer> it = onsets.listIterator();
     	Set<Integer> list = new TreeSet<Integer>();
     	while(it.hasNext()) {
