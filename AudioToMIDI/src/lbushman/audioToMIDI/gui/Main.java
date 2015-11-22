@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.LineEvent;
@@ -365,9 +366,210 @@ public class Main extends Application {
     }
     
     private void displayFrequencies() {
+    	List<Double> ffts = audioData.getFftAbsolute();
+    	int fftLen = audioData.getFftLength();
+    	int halfFFtLen = fftLen / 2;
+    	// Create function getHalfFft(num); / getFft(num)
+    	
+    	List<Double> maxCorrvalues = new ArrayList<Double>();
+    	
+    	List<Double> freqs = new ArrayList<Double>();
+    	for(int time = 0; time < audioData.getNumFFT(); time++) {
+    		int fromI = time * fftLen;
+	    	int toI = fromI + halfFFtLen;
+	    	List<Double> halfFft = ffts.subList(fromI, toI);
+	    	
+	    	List<Double> correlations = new ArrayList<Double>();
+	    	int from = 1; // be careful if you change from 1; logic has to change for position in list.
+	    	int to = halfFFtLen / 4;
+	    	//TODO maybe create a width.
+	    	for(int corrI = from; corrI < to; corrI++) {
+	    		double ampTotal = 0;
+	    		int position = corrI;
+	    		int numAmps = 0;
+	    		while(position < halfFFtLen) {
+	    			ampTotal += halfFft.get(position);
+	    			position += corrI;
+	    			numAmps++;
+	    		}
+	    		correlations.add(ampTotal / numAmps);
+	    	}
+	    	int correlation = Util.maxIndex(correlations, 0, correlations.size());
+	    	Double sum  = Util.sum(correlations);
+	    	maxCorrvalues.add(correlations.get(correlation) / sum);
+	    	double frequency = FundamentalFrequency.computeFrequency(correlation, audioData);
+	    	frequency = FrequencyToNote.findFrequency(frequency);
+	    	freqs.add(frequency);
+    	}
+    	
+    	List<Integer> rollOnsets = new ArrayList<Integer>();
+    	List<Double> ampsL = maxCorrvalues;// Arrays.asList(audioData.getAmp());
+    	List<Double> onsetAmps = new ArrayList<Double>(); 
+		boolean peakAddedSinceLastFall = false;
+		double lastHeight = ampsL.get(0);
+		for(int i = 1; i < ampsL.size(); i++) {
+			
+			if(ampsL.get(i) > lastHeight && (ampsL.get(i) - lastHeight) / lastHeight  > 1.1) {
+				//peaks.add(0.0);
+				peakAddedSinceLastFall = false;
+			} else {
+				if(!peakAddedSinceLastFall) {
+					rollOnsets.add((i - 1) /*+1*/);
+					onsetAmps.add(ampsL.get(i));
+					/*int peak = i - 1;
+					double total = 0;
+					double maxValue = lastHeight;
+					final int PEAK_HALF = 2;
+					for(int j = 1; j <= PEAK_HALF; j++) {
+						total += maxValue / Math.max(bts.get(peak - j), 0.1);
+						total += maxValue / Math.max(bts.get(peak + j), 0.1);
+					}
+					peaks.add(Math.min((total/maxValue)*1000, 0.000001));*/
+					
+					
+					
+					peakAddedSinceLastFall = true;
+				} else {
+					//peaks.add(0.0);
+				}
+			}
+			lastHeight = ampsL.get(i);
+		}
+		
+/*		final int rollBack = 3;
+		ListIterator<Integer> lit = rollOnsets.listIterator();
+		while(lit.hasNext()) {
+			int onset = lit.next();
+			int upperExc = Math.min(onset + 1, ampsL.size() - 1);
+			int lowerInc = Math.max(onset - rollBack, 0);
+			onset = Util.minIndex(ampsL, lowerInc, upperExc);
+			lit.set(onset);
+		}*/
+    	
+		
+		
+		
+    	
+		//TODO I don't ever care about the beginning or end logic so I am lazy!
+    	int sameCount = 1;
+    	int samePass = 3;
+    	ArrayList<Integer> code = new ArrayList<Integer>();
+    	double previous = -1;
+    	for(int i = 0; i < freqs.size(); i++) {
+    		double freq = freqs.get(i);
+    		if(freq == previous) {
+    			sameCount++;
+    		} else {
+    			sameCount = 1;
+    		}
+    		code.add(sameCount);
+    		previous = freq;
+    	}
+    	
+    	if(code.size() != freqs.size()) {
+    		System.err.println("stop here");
+    	}
+    	
+    	Double[] smoothedFreqs = new Double[freqs.size()];
+    	for(int i = freqs.size() - 1; i >= 0; i--) {
+    		if(code.get(i) >= samePass) {
+    			int numSame = code.get(i);
+    			for(int j = 0; j < numSame; j++) {
+    				smoothedFreqs[i] = freqs.get(i);
+    				i--;
+    			}
+    		} else {
+    			int numSame = code.get(i);
+    			for(int j = 0; j < numSame; j++) {
+    				smoothedFreqs[i] = 0.0;
+    				i--;
+    			}   			
+    		}
+    		i++;
+    	}
+    	
+    	/*
+		RunningWindowStats rws = new RunningWindowStats(3);
+		List<Double> smoothedFreqs = new ArrayList<Double>();
+		for(int i = 0; i < smoothedFreqs.size(); i++) {
+			rws.add(smoothedFreqs.get(i));
+			if(rws.isFull()) {
+				rws.
+			}
+		}*/
+		
+    	ArrayList<Integer> percOnsets = new ArrayList<Integer>();
+    	for(int i = 0; i < maxCorrvalues.size(); i++) {
+    		double perc = maxCorrvalues.get(i);
+    		if(perc > .000  && perc < .0157) {
+    			percOnsets.add(i);
+    		}
+    	}
+
+    	ListIterator<Integer> pOLIter = percOnsets.listIterator();
+    	// I like when things blow up. It lets me know something is wrong.
+    	int lastOnset = pOLIter.next();
+    	while(pOLIter.hasNext()) {
+    		int onset = percOnsets.get(pOLIter.nextIndex());
+    		if(onset - lastOnset == 1) {
+    			pOLIter.remove();
+    		} else {
+    			System.out.println("hi");
+    		}
+    		pOLIter.next();
+    		lastOnset = onset;
+    	}
+    	
+    	// Validate onsets. Generally for either ends of the song.
+    	int validWindow = 5;
+    	int vWMax = maxCorrvalues.size() - 1;
+    	
+    	pOLIter = percOnsets.listIterator();
+    	while(pOLIter.hasNext()) {
+    		int onset = pOLIter.next();
+    		int length = Math.min(onset + validWindow, vWMax);
+    		int doRemove = onset;
+    		
+    		for(; doRemove < length; doRemove++) {
+    			if(maxCorrvalues.get(doRemove) > 0.02) {//.0152056
+    				doRemove = 0;
+    				break;
+    			}
+    		}
+    		if(doRemove != 0) {
+    			pOLIter.remove(); // TODO log the onset being removed.
+    		}
+    	}
+    	
+    	pOLIter = percOnsets.listIterator();
+    	int fOnset = pOLIter.next();
+    	int sOnset = 0;
+    	
+    	while(pOLIter.hasNext()) {
+    		sOnset = pOLIter.next();
+    		System.out.println(sOnset - fOnset);
+    		fOnset = sOnset;
+    	}
+    	
+    	
     	//TODO get its own graph
 //		updateGraph(fftGraph, audioData.getFrequencies());
-		updateGraph(fftGraph, audioData.getNormalizedFrequencies());
+    	if(true) {
+    		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 70)));
+//    		/updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(freqs/*audioData.getNormalizedFrequencies()*/, 10)));
+    		fftGraph.update2List(prepareValuesForDisplay(freqs, 45));
+    		//fftGraph.update3List(prepareValuesForDisplay(Arrays.asList(smoothedFreqs),20));
+      		
+    	//	updateGraph(fftGraph, Arrays.asList(preparePositionsForDisplay(rollOnsets, 19000)));
+    		updateGraph(fftGraph, Arrays.asList(preparePositionsForDisplay(percOnsets, 19000)));
+//			fftGraph.update2List(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 15));
+    		fftGraph.update3List(prepareValuesForDisplay(maxCorrvalues, 5/*150000*/));
+			fftGraph.update3List(prepareValuesForDisplay(maxCorrvalues, 150000));
+    	} else {
+    		fftGraph.clearData();
+    		fftGraph.clearData2();
+    		fftGraph.clearData3();
+    	}
     	//fftGraph.clearData();
     	
 		Double[] beats = new Double[audioData.getNumFFT()];
@@ -448,20 +650,23 @@ public class Main extends Application {
 		        return o1.compareTo(o2);
 		    }amps
 		});*/
+		
+		/*
 		int beatDifference = 10;//16;
 		List<Integer> trackedBeats = ProcessSignal.beatTracker(onsets, beatDifference);
 		List<Double> onsetAmps = ProcessSignal.onsetAmps(onsets, Arrays.asList(audioData.getAmp()), 200);
+		*/
 		
-		DownBeatData data = new DownBeatData();
-		data.avgBeatLength = beatDifference;
-		data.beats = trackedBeats;
-		data.onsetAmps = onsetAmps;
+//		DownBeatData data = new DownBeatData();
+//		data.avgBeatLength = beatDifference;
+//		data.beats = trackedBeats;
+//		data.onsetAmps = onsetAmps;
 		//data.kSignature;
-		data.onsets = onsets;
+//		data.onsets = onsets;
 		
-		DownBeatDetection dbDetection = new DownBeatDetection(data);
+//		DownBeatDetection dbDetection = new DownBeatDetection(data);
 		
-		dbDetection.detect();
+//		dbDetection.detect();
 		
 		
 		if(false) {
@@ -469,11 +674,11 @@ public class Main extends Application {
 		} else if (true){
 			
 			
-			fftGraph.updateList(preparePositionsForDisplay(trackedBeats/*audioData.getTrackedBeats()*/,800.0));
+//			fftGraph.updateList(preparePositionsForDisplay(trackedBeats/*audioData.getTrackedBeats()*/,800.0));
 			
 			
-		} else if(true) {
-			fftGraph.updateList(onsetAmps.toArray(new Double[onsetAmps.size()]));
+		} else if(false) {
+//			fftGraph.updateList(onsetAmps.toArray(new Double[onsetAmps.size()]));
 		} else {
 			fftGraph.clearData();
 		}
@@ -493,11 +698,51 @@ public class Main extends Application {
 */		
 		
    // 	Number[] data = beats.toArray(new Number[dataList.size()]);
-		if(true) {
+		if(false) {
+			audioData.getBtClass().detect();
+			fftGraph.clearData2();
+			fftGraph.update2List(prepareValuesForDisplay(audioData.getBtClass().percentages, 1));
+			
+			List<Double> bts = audioData.getBtClass().percentages;
+			ArrayList<Double> peaks = new ArrayList<Double>();
+			peakAddedSinceLastFall = false;
+			lastHeight = bts.get(0);
+			for(int i = 1; i < bts.size(); i++) {
+				if(bts.get(i) >= lastHeight) {
+					//peaks.add(0.0);
+					peakAddedSinceLastFall = false;
+				} else {
+					if(!peakAddedSinceLastFall) {
+						peaks.add((double) (i - 1));
+						
+						/*int peak = i - 1;
+						double total = 0;
+						double maxValue = lastHeight;
+						final int PEAK_HALF = 2;
+						for(int j = 1; j <= PEAK_HALF; j++) {
+							total += maxValue / Math.max(bts.get(peak - j), 0.1);
+							total += maxValue / Math.max(bts.get(peak + j), 0.1);
+						}
+						peaks.add(Math.min((total/maxValue)*1000, 0.000001));*/
+						
+						
+						
+						peakAddedSinceLastFall = true;
+					} else {
+						//peaks.add(0.0);
+					}
+				}
+				lastHeight = bts.get(i);
+			}
+			//peaks.add(0.0);
+			fftGraph.update3List(prepareValuesForDisplay(peaks, 1));
+			
+		}
+		else if(false) {
 			fftGraph.update2List(preparePositionsForDisplay(onsets, 3500));
-		} else if(true) {
+		} else if(false) {
 			fftGraph.update2List(beats);
-		} else {
+		} else if(false) {
 			fftGraph.clearData2();
 		}
 		
@@ -508,15 +753,15 @@ public class Main extends Application {
 			Double[] ampsAmped = new Double[amps.length];
 			for(int i = 0; i < ampsAmped.length; i++) {
 				if(i < 130)
-					ampsAmped[i] = amps[i] * 70;//28;
+					ampsAmped[i] = amps[i] * 1600;//290;//28;
 				else
-					ampsAmped[i] = amps[i] * 70;
+					ampsAmped[i] = amps[i] * 1600;
 			}
 			
 			fftGraph.update3List(ampsAmped);
-		} else if (false) {
+		} else if (true) {
 			//trackedBeats.removeAll(audioData.getBeats());
-			fftGraph.update3List(preparePositionsForDisplay(trackedBeats/*audioData.getTrackedBeats()*/,1200.0));
+//			fftGraph.update3List(preparePositionsForDisplay(trackedBeats/*audioData.getTrackedBeats()*/,1200.0));
 		} else if(false) {
 			Integer actualBeats[] = {46, 66, 81, 86, 116, 126, 136, 146, 156, 166, 206, 221, 226, 266, 281, 286, 326, 346, 361, 366, 396, 406, 416, 426, 436, 446, 486, 501, 506, 546, 561, 566, 586, 596, 606, 616, 626, 646, 656, 666, 676, 686, 706, 716, 726, 736, 746, 766, 776, 786, 796, 806, 821, 831, 841, 851, 866, 876, 886, 896, 936, 951, 956, 996, 1011, 1016};
 		    Double[] numbers = preparePositionsForDisplay(Arrays.asList(actualBeats),1200);
@@ -538,6 +783,18 @@ public class Main extends Application {
 		*/
 		
 		//fftGraph.update3List(beats2);
+    }
+    
+    private Double[] prepareValuesForDisplay(List<Double> values, double height) {
+    	if(values.isEmpty()) {
+    		return null;
+    	}
+		Double[] graph = new Double[values.size()];
+		for(int i = 0; i < graph.length; i++) {
+			graph[i] = values.get(i) * height;
+		}	
+
+		return graph;
     }
     
     private Double[] preparePositionsForDisplay(List<Integer> positions, double height) {

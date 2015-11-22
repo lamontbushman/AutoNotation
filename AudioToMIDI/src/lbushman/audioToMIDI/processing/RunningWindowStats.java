@@ -1,7 +1,11 @@
 package lbushman.audioToMIDI.processing;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
+
+import lbushman.audioToMIDI.util.Util;
 
 
 public class RunningWindowStats {
@@ -41,6 +45,25 @@ public class RunningWindowStats {
 		return window.size();
 	}
 	
+	public List<Number> mode() {
+		List<Number> modes = Util.mode(new ArrayList<Number>(window));
+		return modes;
+		
+		/*
+		switch(modes.size()) {
+			case 0:
+				//return -1;
+			case 1:
+				//return modes.get(0);
+			default:
+				Double sum = 0.0;
+				for(Number n : modes) {
+					sum += n.doubleValue();
+				}
+				//return sum / modes.size();
+		}*/
+	}
+	
 	public double mean() {
 		return total / window.size();
 	}
@@ -50,12 +73,15 @@ public class RunningWindowStats {
 	}
 	
 	public double variance(double mean) {
+		if(window.size() < 2)
+			return 0;
+		
 		double sum = 0;
 		for(Number number : window) {
 			sum += Math.pow(number.doubleValue() - mean, 2);
 		}
-		
-		return sum / (window.size() - 1); //(window.size() - 1);
+
+		return sum / (window.size() - 1); //(window.size());
 	}
 	
 	public double stdDevi() {

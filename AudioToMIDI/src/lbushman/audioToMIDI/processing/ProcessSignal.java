@@ -31,7 +31,22 @@ public class ProcessSignal {
 		data.setOverlapPercentage(overlapPercentage);
 		data.setFftLength(fftLength);
 		double sampleRate = audioData.getFormat().getSampleRate();
-		int	numFFTsInOneSecond = (int) (((sampleRate / fftLength) / overlapPercentage) + 1);
+		int	numFFTsInOneSecond = (int) (((sampleRate / fftLength) / overlapPercentage)); //partial FFTs.
+		// completeNumFFTsInOneSecond = numFFTsInOneSecond - 1/overlapPercentage;
+		// sR = 16384;
+		// fftLength = 2048
+		// sR /fft = 8
+		// oP = .25
+		// num = 32
+		// BPM = 120; 2 bts/sec
+		// 1/2 sec/bt
+		// fastestNote = 1/4 BPM
+		// 1/8 sec/finest note
+		// numFFtsin8thSec = 32/8 = 4
+		// complete... = 22/8 = 3.5 = 3
+		// notes
+//	0				1				2				3				4				5				6				7				8
+//	1	2	3	4	5	6	7	8	9	0	1	2	3	4	5	6	7	8	9	0	1	2	3	4	5	6	7	8	9	0	1	2	3
 		data.setNumFftsInOneSecond(numFFTsInOneSecond);
 		//numFFTsInOneSecond = (samplingRate / (newFFTLength / 2)) / overlap; // /2 because of doubling and padding
 	}
@@ -119,7 +134,7 @@ public class ProcessSignal {
 		}*/
     	
     	List<Integer> onsets = bt.getBeats();
-    	
+    	data.setBtClass(bt);
     	List<Integer> differences = new ArrayList<Integer>(onsets.size() / 2);
     	
     	int last = onsets.get(0);
@@ -137,7 +152,8 @@ public class ProcessSignal {
     			remOnsets.add(onset);
     		}
     	}
-    	onsets.removeAll(remOnsets);
+    	
+    	//onsets.removeAll(remOnsets);
     	
     	//TODO put this back if needed
 		//bt.combineBeats(average);

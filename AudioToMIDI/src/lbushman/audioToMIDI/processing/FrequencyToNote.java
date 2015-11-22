@@ -314,6 +314,7 @@ B0
 		double devi = Math.abs(diff) / frequencies[index + 1];
 		
 		if(devi < .01) {
+			//TODO
 			Util.printErrorln("Found a frequency within 5% of the center between two other frequencies."
 					+ " deviation: " + devi + "frequency: " + frequency + 
 					" lower: " + frequencies[index] + " upper: " + frequencies[index + 1]);

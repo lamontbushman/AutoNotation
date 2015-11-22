@@ -206,7 +206,16 @@ public class FundamentalFrequency extends Thread {
 	
     private double computeFrequency(int bin) {
     	return computeFrequency(bin, data);
-    }	
+    }
+    
+    public int computeBin(double frequency) {
+    	return computeBin(frequency, data);
+    }
+    
+    public static int computeBin(double frequency, AudioData data) {
+    	double bin = frequency * data.getFftLength() / data.getFormat().getSampleRate();
+    	return (int) bin;
+    }
 	
     /**
      * Probably don't need this

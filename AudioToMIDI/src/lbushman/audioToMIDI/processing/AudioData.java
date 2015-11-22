@@ -34,6 +34,7 @@ public class AudioData {
 	private List<Integer> beats2;
 	private List<Double> beatsPercent;
 	private List<Integer> trackedBeats;
+	private BeatDetection bt;
 	
 	public AudioData(byte[] samples, AudioFormat audioFormat) {
 		format = audioFormat;
@@ -274,6 +275,14 @@ public class AudioData {
 
 	public void setTrackedBeats(List<Integer> beats) {
 		this.trackedBeats = beats;
+	}
+
+	public BeatDetection getBtClass() {
+		return this.bt;
+	}
+	
+	public void setBtClass(BeatDetection bt) {
+		this.bt = bt;
 	}
 
 	
