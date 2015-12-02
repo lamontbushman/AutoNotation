@@ -16,7 +16,6 @@ import javax.sound.sampled.LineEvent.Type;
 import javax.sound.sampled.LineListener;
 
 import lbushman.audioToMIDI.io.CaptureAudio;
-import lbushman.audioToMIDI.io.Note;
 import lbushman.audioToMIDI.io.PlayAudio;
 import lbushman.audioToMIDI.io.ReadAudioFile;
 import lbushman.audioToMIDI.io.WriteAudioFile;
@@ -59,9 +58,6 @@ public class Main extends Application {
 		
 	@Override public void start(Stage stage) {
 		Util.setDebugMode(false);
-		
-		int index = FrequencyToNote.findIndex(261.625);
-		Note n = FrequencyToNote.toNote(index);
 		
         stage.setTitle("Signal Processing Senior Project");       
         
@@ -527,27 +523,57 @@ if(false) {
 				rws.
 			}
 		}*/
-		
+    	
     	ArrayList<Integer> onsets = new ArrayList<Integer>();
+    	boolean atBase = false;
+    	boolean atPeak = false;
     	for(int i = 0; i < corrValuesPerc.size(); i++) {
     		double perc = corrValuesPerc.get(i);
-    		if(perc > .000  && perc < .0157) {
-    			onsets.add(i);
+    		// TODO probably switch to old numbers (maybe not, extra numbers might be needed???), but now include a rule that the highest in the range must be so much higher than the lowest found in the (first half of the) range. 
+    		// Found bottom
+    		if(perc < /*0.017*/0.018 ) { //(absolute min (0.009 0.008 too low)  .018 getting a little scary to be cutting into a peak.  At one point gives 2 .017 - 0.020 a decent number for matching amp peak.
+    			if(atBase == false) {
+    				//onsets.add(i); // beginning of peak
+    			}
+    			atBase = true;
+    			atPeak = false;
+    		} else if (perc > /*0.025*/0.026) {//maybe lower a little // Found  a definite peak (.030 highest (.031 too high)) 0.020 too low, 0.025 highest I'd like to be comfortable with.
+    			if(atPeak == false) {
+    				onsets.add(i); // bottom of peak
+    			}
+    			atPeak = true;
+    			atBase = false;
+    		} else {
+    			// in middle ground
     		}
+    		
+    		/*if(at)*/
     	}
 
     	ListIterator<Integer> pOLIter = onsets.listIterator();
-    	// I like when things blow up. It lets me know something is wrong.
-    	int lastOnset = pOLIter.next();
-    	while(pOLIter.hasNext()) {
-    		int onset = onsets.get(pOLIter.nextIndex());
-    		if(onset - lastOnset == 1) {
-    			pOLIter.remove();
-    		}
-    		pOLIter.next();
-    		lastOnset = onset;
-    	}
+												if(false) {
+												    	/*ArrayList<Integer>*/ onsets = new ArrayList<Integer>();
+												    	for(int i = 0; i < corrValuesPerc.size(); i++) {
+												    		double perc = corrValuesPerc.get(i);
+												    		if(perc > .000  && perc < 0.020  /* 0.027  */ /*0.0206*/ /*0.02055332*/ /*.0175*/ /*.017349*/ /*.0157*/) { //0.020 a decent number for matching amp peak.
+												    			onsets.add(i);
+												    		}
+												    	}
+												
+												    	/*ListIterator<Integer>*/ pOLIter = onsets.listIterator();
+												    	// I like when things blow up. It lets me know something is wrong.
+												    	int lastOnset = pOLIter.next();
+												    	while(pOLIter.hasNext()) {
+												    		int onset = onsets.get(pOLIter.nextIndex());
+												    		if(onset - lastOnset == 1) {
+												    			pOLIter.remove();
+												    		}
+												    		pOLIter.next();
+												    		lastOnset = onset;
+												    	}
+												}
     	
+ if(false) {   	
     	// Validate onsets. Generally for either ends of the song.
     	int validWindow = 5;
     	int vWMax = corrValuesPerc.size() - 1;
@@ -565,32 +591,34 @@ if(false) {
     			}
     		}
     		if(doRemove != 0) {
-    			pOLIter.remove(); // TODO log the onset being removed.
+    			pOLIter.remove(); 
+    			System.out.println("removed during validation: " + onset);
+    			// TODO log the onset being removed.
     		}
     	}
     	
-    	
-    	// add last offset to onsets temporarily just for elongating trackedBeats.
-    	// TODO This probably won't be even close to being accurate, unless I stop the string from vibrating at the right time.
-    	int findOffIterator = onsets.get(onsets.size() - 1);
-    	int window = 5;
-    	int lastS = Math.min(freqs.size() - 1, findOffIterator + window);
-    	List<Double> lastMode = Util.mode(freqs.subList(findOffIterator, lastS));
-    	Util.verify(lastMode.size() == 1, "Last note is not clear.");
-    	double freq = lastMode.get(0);
-    	int numBeforeFail = 3;
-    	int lastOffset = findOffIterator;
-    	while(findOffIterator < freqs.size() && numBeforeFail > 0) {
-    		
-    		if(freqs.get(findOffIterator) != freq) {
-    			numBeforeFail--;
-    		} else {
-    			lastOffset = findOffIterator;
-    		}
-    		findOffIterator++;
-    	}
-    	// onsets.add(lastOffset); // Will be removing lastOffset later.
-    	
+								if(false) {    	
+								    	// add last offset to onsets temporarily just for elongating trackedBeats.
+								    	// TODO This probably won't be even close to being accurate, unless I stop the string from vibrating at the right time.
+								    	int findOffIterator = onsets.get(onsets.size() - 1);
+								    	int window = 5;
+								    	int lastS = Math.min(freqs.size() - 1, findOffIterator + window);
+								    	List<Double> lastMode = Util.mode(freqs.subList(findOffIterator, lastS));
+								    	Util.verify(lastMode.size() == 1, "Last note is not clear.");
+								    	double freq = lastMode.get(0);
+								    	int numBeforeFail = 3;
+								    	int lastOffset = findOffIterator;
+								    	while(findOffIterator < freqs.size() && numBeforeFail > 0) {
+								    		
+								    		if(freqs.get(findOffIterator) != freq) {
+								    			numBeforeFail--;
+								    		} else {
+								    			lastOffset = findOffIterator;
+								    		}
+								    		findOffIterator++;
+								    	}
+								    	// onsets.add(lastOffset); // Will be removing lastOffset later.
+								}   	
     	
     	
     	
@@ -598,6 +626,7 @@ if(false) {
     	// i.e. Praise to the man. Maybe what we have here is what we want, but later account for
     	// what a beat actually is not the average difference between onsets. 
     	int btdifference = avgOnsetDiff(onsetDiff(onsets));
+    	// btdifference = 22;
     	List<Integer> trackedBeats = ProcessSignal.beatTracker(onsets, btdifference);
     	
     	// Here I removed lastOffset.
@@ -635,7 +664,9 @@ if(false) {
 		
 		DownBeatData data = new DownBeatData();
 		data.avgBeatLength = btdifference;
+		
 		data.beats = trackedBeats;
+		System.out.println("TB: " + trackedBeats);
 		data.onsetAmps = onsetAmps2;
 		//data.kSignature;
 		data.onsets = onsets;		
@@ -756,23 +787,27 @@ if(false) {
     	// 2,4,6, and 8 doesn't divide 7 or 11 or 15
     	// 4 and 8 doesn't divide 7-1 or 11-1 or 15-1 but 2 does divide 6, 10, and 14
     	//
-    	
-    	
+ }  	
+
     	
     	//TODO get its own graph
 //		updateGraph(fftGraph, audioData.getFrequencies());
+    	
+    	fftGraph.clearData();
+		fftGraph.clearData2();
+		fftGraph.clearData3();
     	if(true) {
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 70)));
-    	//	updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(freqs/*audioData.getNormalizedFrequencies()*/, 100)));
+    //		updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(freqs/*audioData.getNormalizedFrequencies()*/, 0.01)));
     	//	fftGraph.update2List(prepareValuesForDisplay(onsetAmps2/*freqs*/, 5));
     		//fftGraph.update3List(prepareValuesForDisplay(Arrays.asList(smoothedFreqs),20));
     		
 		    		//fftGraph.updateList(prepareValuesForDisplay(notesOnBeatD, 27000));
-		    		fftGraph.update2List(preparePositionsForDisplay(onsets, 40000/*25000*/));
-		    		//fftGraph.update3List(preparePositionsForDisplay(trackedBeats, 19000));
+		    		fftGraph.update2List(preparePositionsForDisplay(onsets, 40/*25000*/));
+		    		//fftGraph.updateList(preparePositionsForDisplay(trackedBeats, 30));
     		//fftGraph.update3List(preparePositionsForDisplay(onsets, 19000));
-    		
-    		fftGraph.update3List(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 940));
+		    		fftGraph.updateList(prepareValuesForDisplay(corrValuesPerc, 150));
+   		fftGraph.update3List(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 1));
 		    		//fftGraph.update3List(prepareValuesForDisplay(onsetAmps2, 4));
       		
     	//	updateGraph(fftGraph, Arrays.asList(preparePositionsForDisplay(rollOnsets, 19000)));
@@ -787,6 +822,10 @@ if(false) {
     		fftGraph.clearData3();
     	}
     	//fftGraph.clearData();
+    	
+if(true) {
+	return;
+}
     	
 		Double[] beats = new Double[audioData.getNumFFT()];
 		Double[] secondBeats = new Double[audioData.getNumFFT()]; 

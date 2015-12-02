@@ -33,9 +33,8 @@ public class PossibleDownBeat {
 	
 	public static List<PossibleDownBeat> intitalList() {
 		List<PossibleDownBeat> possibleDownBeats = new ArrayList<PossibleDownBeat>();
-		int[] temp = {2,3,4,6};
-		for(int offset = 0; offset <= 1/*MAX_BTS_A_PICKUP_MSURE*/; offset++) {
-			for(int btsPerMsure : temp/*POSSIBLE_BTS_PER_MSURE*/) {
+		for(int offset = 0; offset <= MAX_BTS_A_PICKUP_MSURE; offset++) {
+			for(int btsPerMsure : POSSIBLE_BTS_PER_MSURE) {
 				possibleDownBeats.add(new PossibleDownBeat(offset, btsPerMsure));
 			}
 		}

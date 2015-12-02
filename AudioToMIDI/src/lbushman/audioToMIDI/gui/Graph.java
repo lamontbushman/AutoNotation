@@ -202,38 +202,46 @@ public class Graph extends BorderPane {
 	public void setRange(int begIndex, int endIndex, boolean startZero) {
 		low = begIndex;
 		high = endIndex;
-		clearData();
+		/*clearData();
 		if(data2 != null)
 			clearData2();
 		if(data3 != null)
-			clearData3();
+			clearData3();*/
 		
-		for(int i = begIndex; i < endIndex; i++) {
-			if(startZero) {
-				series.getData().add(new Data<Number, Number>(i - begIndex, data[i]));
-			}
-			else {
-				series.getData().add(new Data<Number, Number>(i, data[i]));
+		if(data != null && !series.getData().isEmpty()) {
+			clearData();
+			for(int i = begIndex; i < endIndex; i++) {
+				
+				if(startZero) {
+					series.getData().add(new Data<Number, Number>(i - begIndex, data[i]));
+				}
+				else {
+					series.getData().add(new Data<Number, Number>(i, data[i]));
+				}
 			}
 		}
 		
-		if(data2 != null)
-		for(int i = begIndex; i < endIndex; i++) {
-			if(startZero) {
-				series2.getData().add(new Data<Number, Number>(i - begIndex, data2[i]));
-			}
-			else {
-				series2.getData().add(new Data<Number, Number>(i, data2[i]));
+		if(data2 != null && !series2.getData().isEmpty()) {
+			clearData2();
+			for(int i = begIndex; i < endIndex; i++) {
+				if(startZero) {
+					series2.getData().add(new Data<Number, Number>(i - begIndex, data2[i]));
+				}
+				else {
+					series2.getData().add(new Data<Number, Number>(i, data2[i]));
+				}
 			}
 		}
 		
-		if(data3 != null)
-		for(int i = begIndex; i < endIndex; i++) {
-			if(startZero) {
-				series3.getData().add(new Data<Number, Number>(i - begIndex, data3[i]));
-			}
-			else {
-				series3.getData().add(new Data<Number, Number>(i, data3[i]));
+		if(data3 != null && !series3.getData().isEmpty()) {
+			clearData3();	
+			for(int i = begIndex; i < endIndex; i++) {
+				if(startZero) {
+					series3.getData().add(new Data<Number, Number>(i - begIndex, data3[i]));
+				}
+				else {
+					series3.getData().add(new Data<Number, Number>(i, data3[i]));
+				}
 			}
 		}
 		
