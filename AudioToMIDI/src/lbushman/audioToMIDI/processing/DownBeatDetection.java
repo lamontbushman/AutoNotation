@@ -28,6 +28,7 @@ public class DownBeatDetection {
 		
 		
 		List<Double> noteDurations = calculateNoteDurations(data.beats, data.avgBeatLength);
+		data.noteDurations = noteDurations;
 		for(Double duration : noteDurations) {
 			System.out.print(duration + " ");
 		}
@@ -49,7 +50,7 @@ public class DownBeatDetection {
 			}
 		}
 		System.out.println();
-		data.noteDurations = noteDurations2;
+		//data.noteDurations = noteDurations2;
 		
 
 		for(Double duration : noteDurations2) {
@@ -88,9 +89,7 @@ public class DownBeatDetection {
 				break; 
 			}
 		}
-		if(bestCandidate == -1) {
-			System.out.println("We have a problem");
-		}
+		Util.verify(bestCandidate != -1, "calculateNoteDuration() unexpected state,");
 		lastNoteError = leastError;
 		return bestCandidate;
 	}

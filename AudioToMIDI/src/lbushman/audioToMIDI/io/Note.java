@@ -19,6 +19,12 @@ public class Note {
 		position = -1;
 	}
 	
+	/**
+	 * 
+	 * @param name: i.e. A, B, C...
+	 * @param sharpFlatNull: true == sharp, false == flat, null == natural
+	 * @param position: Middle C is C4. B below C4 is B3. See http://www.phy.mtu.edu/~suits/notefreqs.html
+	 */
 	public Note(char name, Boolean sharpFlatNull, int position) {
 		this.name = name;
 		this.sharpFlatNull = sharpFlatNull;

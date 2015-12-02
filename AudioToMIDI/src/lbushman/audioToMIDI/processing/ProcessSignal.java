@@ -82,6 +82,10 @@ public class ProcessSignal {
     	}
     	data.setFftLowPassAbsolute(fftAbsolute.toArray(new Double[fftAbsolute.size()]));*/
     	
+    	
+    	
+    	OnsetDetection.computeAmp(data);
+if(false) {    	
     	FundamentalFrequency ff = new FundamentalFrequency(data, 
     			Arrays.asList(data.getFftLowPassAbsolute()));
     	ff.start();
@@ -328,7 +332,7 @@ public class ProcessSignal {
    // 	setNotenames();
     //	setNormalizedFrequencies();
     	data.setBeats2(removeTheseOnsets);
-    	
+}   	
     }
 
     /**

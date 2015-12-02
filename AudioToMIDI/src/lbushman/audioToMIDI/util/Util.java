@@ -54,6 +54,14 @@ public class Util {
 		}
 		return sum;
 	}
+
+	public static int sumInt(List<Integer> values) {
+		int sum = 0;
+		for(int value : values) {
+			sum += value;
+		}
+		return sum;
+	}
 	
     public static double[] convertDoubles(List<Double> doubles)
     {
@@ -172,6 +180,30 @@ public class Util {
     private static boolean debug = false; 
     public static void setDebugMode(boolean doDebug) {
     	debug = doDebug;
+    }
+    
+    private static boolean verify = true; 
+    public static void setVerify(boolean doVerify) {
+    	verify = doVerify;
+    }
+    
+    public static void logIfFails(boolean passed, String str) {
+    	if(!passed) {
+    		System.err.println(str);
+    		System.err.flush();   		
+    	}
+    }
+    
+    public static void verify(boolean passed, String str) {
+    	if(!passed) {
+    		System.err.println(str);
+    		System.err.flush();
+    		if(verify) {
+    			System.out.println("Hitting the breakpoint");
+    		} else {
+    			System.exit(1);
+    		}
+    	}
     }
     
     public static void printErrorln(String str) {

@@ -62,6 +62,11 @@ public class OnsetDetection extends Thread {
 	}
 	
 	public void computeAmp(CountDownLatch latch) {
+		computeAmp(data);
+		latch.countDown();
+	}
+	
+	public static void computeAmp(AudioData data) {
 		Complex[] overlapData = data.getComplexData();
 		
 		Double[] maxAmps = new Double[data.getNumFFT()/*fftAbsolute.length*/];
@@ -80,7 +85,6 @@ public class OnsetDetection extends Thread {
 			maxI++;
 		}
 		data.setAmp(maxAmps);
-		latch.countDown();
 	}
 	
 	/**

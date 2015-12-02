@@ -16,6 +16,7 @@ import javax.sound.sampled.LineEvent.Type;
 import javax.sound.sampled.LineListener;
 
 import lbushman.audioToMIDI.io.CaptureAudio;
+import lbushman.audioToMIDI.io.Note;
 import lbushman.audioToMIDI.io.PlayAudio;
 import lbushman.audioToMIDI.io.ReadAudioFile;
 import lbushman.audioToMIDI.io.WriteAudioFile;
@@ -25,7 +26,9 @@ import lbushman.audioToMIDI.processing.DownBeatData;
 import lbushman.audioToMIDI.processing.DownBeatDetection;
 import lbushman.audioToMIDI.processing.FrequencyToNote;
 import lbushman.audioToMIDI.processing.FundamentalFrequency;
+import lbushman.audioToMIDI.processing.Pair;
 import lbushman.audioToMIDI.processing.Peaks;
+import lbushman.audioToMIDI.processing.PossibleDownBeat;
 import lbushman.audioToMIDI.processing.ProcessSignal;
 import lbushman.audioToMIDI.processing.RunningWindowStats;
 import lbushman.audioToMIDI.util.Util;
@@ -56,6 +59,9 @@ public class Main extends Application {
 		
 	@Override public void start(Stage stage) {
 		Util.setDebugMode(false);
+		
+		int index = FrequencyToNote.findIndex(261.625);
+		Note n = FrequencyToNote.toNote(index);
 		
         stage.setTitle("Signal Processing Senior Project");       
         
@@ -132,7 +138,9 @@ public class Main extends Application {
 		//ps.printNonConsecutiveNotes(false);
 	
 		List<Double> spectralFlux = audioData.getSpectralFlux();
+if(false) {
 		displayCenterGraph(spectralFlux);
+
 		List<Double> normalized = new ArrayList<Double>();
 		
 //		Double[] amp = ProcessSignal.computeAmp(audioData);
@@ -144,7 +152,7 @@ public class Main extends Application {
 			i++;
 		}
 		audioData.setNormalizedFrequencies(normalized);
-		
+}		
 		//Double fftAbsolute[] = audioData.getFftAbsolute();
 		Double fftLowpass[] = audioData.getFftLowPassAbsolute();
 		
@@ -158,6 +166,7 @@ public class Main extends Application {
 		
 		//displayAC(0);
 		displayFFt(0, Arrays.asList(fftLowpass));
+		System.out.println("done with process signal");
     }
     
     private void updateGraph(Graph graph, Number[] data) {
@@ -365,13 +374,35 @@ public class Main extends Application {
     	return frequency + "Hz " + closestNote;
     }
     
+    public int avgOnsetDiff(List<Integer> differences) {
+		List<Integer> modes = Util.mode(differences);
+		// TODO There is a chance this may fail. Seek further implementation.
+		Util.logIfFails(modes.size() == 1, "More than one mode for differences between onsets. modes: " + modes);
+		return (int) Math.round(Util.average(modes));
+    }
+    
+    public List<Integer> onsetDiff(List<Integer> onsets) {
+    	Util.verify(onsets.size() >= 2, "There are less than two onsets.");
+    	ListIterator<Integer> it = onsets.listIterator();
+    	int previous = it.next();
+    	int current = 0;
+    	List<Integer> differences = new ArrayList<Integer>();
+    	while(it.hasNext()) {
+    		current = it.next();
+    		differences.add(current - previous);
+    		previous = current;
+    	}
+    	return differences;
+    }
+    
     private void displayFrequencies() {
     	List<Double> ffts = audioData.getFftAbsolute();
     	int fftLen = audioData.getFftLength();
     	int halfFFtLen = fftLen / 2;
     	// Create function getHalfFft(num); / getFft(num)
     	
-    	List<Double> maxCorrvalues = new ArrayList<Double>();
+    	List<Double> corrValuesPerc = new ArrayList<Double>();
+    	List<Double> corrValues = new ArrayList<Double>();
     	
     	List<Double> freqs = new ArrayList<Double>();
     	for(int time = 0; time < audioData.getNumFFT(); time++) {
@@ -396,14 +427,15 @@ public class Main extends Application {
 	    	}
 	    	int correlation = Util.maxIndex(correlations, 0, correlations.size());
 	    	Double sum  = Util.sum(correlations);
-	    	maxCorrvalues.add(correlations.get(correlation) / sum);
+	    	corrValuesPerc.add(correlations.get(correlation) / sum);
+	    	corrValues.add(correlations.get(correlation));
 	    	double frequency = FundamentalFrequency.computeFrequency(correlation, audioData);
 	    	frequency = FrequencyToNote.findFrequency(frequency);
 	    	freqs.add(frequency);
     	}
     	
     	List<Integer> rollOnsets = new ArrayList<Integer>();
-    	List<Double> ampsL = maxCorrvalues;// Arrays.asList(audioData.getAmp());
+    	List<Double> ampsL = corrValuesPerc;// Arrays.asList(audioData.getAmp());
     	List<Double> onsetAmps = new ArrayList<Double>(); 
 		boolean peakAddedSinceLastFall = false;
 		double lastHeight = ampsL.get(0);
@@ -466,9 +498,7 @@ public class Main extends Application {
     		previous = freq;
     	}
     	
-    	if(code.size() != freqs.size()) {
-    		System.err.println("stop here");
-    	}
+    	Util.verify(code.size() == freqs.size(), "code.size() != freqs.size()");
     	
     	Double[] smoothedFreqs = new Double[freqs.size()];
     	for(int i = freqs.size() - 1; i >= 0; i--) {
@@ -498,23 +528,21 @@ public class Main extends Application {
 			}
 		}*/
 		
-    	ArrayList<Integer> percOnsets = new ArrayList<Integer>();
-    	for(int i = 0; i < maxCorrvalues.size(); i++) {
-    		double perc = maxCorrvalues.get(i);
+    	ArrayList<Integer> onsets = new ArrayList<Integer>();
+    	for(int i = 0; i < corrValuesPerc.size(); i++) {
+    		double perc = corrValuesPerc.get(i);
     		if(perc > .000  && perc < .0157) {
-    			percOnsets.add(i);
+    			onsets.add(i);
     		}
     	}
 
-    	ListIterator<Integer> pOLIter = percOnsets.listIterator();
+    	ListIterator<Integer> pOLIter = onsets.listIterator();
     	// I like when things blow up. It lets me know something is wrong.
     	int lastOnset = pOLIter.next();
     	while(pOLIter.hasNext()) {
-    		int onset = percOnsets.get(pOLIter.nextIndex());
+    		int onset = onsets.get(pOLIter.nextIndex());
     		if(onset - lastOnset == 1) {
     			pOLIter.remove();
-    		} else {
-    			System.out.println("hi");
     		}
     		pOLIter.next();
     		lastOnset = onset;
@@ -522,16 +550,16 @@ public class Main extends Application {
     	
     	// Validate onsets. Generally for either ends of the song.
     	int validWindow = 5;
-    	int vWMax = maxCorrvalues.size() - 1;
+    	int vWMax = corrValuesPerc.size() - 1;
     	
-    	pOLIter = percOnsets.listIterator();
+    	pOLIter = onsets.listIterator();
     	while(pOLIter.hasNext()) {
     		int onset = pOLIter.next();
     		int length = Math.min(onset + validWindow, vWMax);
     		int doRemove = onset;
     		
     		for(; doRemove < length; doRemove++) {
-    			if(maxCorrvalues.get(doRemove) > 0.02) {//.0152056
+    			if(corrValuesPerc.get(doRemove) > 0.02) {//.0152056
     				doRemove = 0;
     				break;
     			}
@@ -541,30 +569,218 @@ public class Main extends Application {
     		}
     	}
     	
-    	pOLIter = percOnsets.listIterator();
-    	int fOnset = pOLIter.next();
-    	int sOnset = 0;
     	
-    	while(pOLIter.hasNext()) {
-    		sOnset = pOLIter.next();
-    		System.out.println(sOnset - fOnset);
-    		fOnset = sOnset;
+    	// add last offset to onsets temporarily just for elongating trackedBeats.
+    	// TODO This probably won't be even close to being accurate, unless I stop the string from vibrating at the right time.
+    	int findOffIterator = onsets.get(onsets.size() - 1);
+    	int window = 5;
+    	int lastS = Math.min(freqs.size() - 1, findOffIterator + window);
+    	List<Double> lastMode = Util.mode(freqs.subList(findOffIterator, lastS));
+    	Util.verify(lastMode.size() == 1, "Last note is not clear.");
+    	double freq = lastMode.get(0);
+    	int numBeforeFail = 3;
+    	int lastOffset = findOffIterator;
+    	while(findOffIterator < freqs.size() && numBeforeFail > 0) {
+    		
+    		if(freqs.get(findOffIterator) != freq) {
+    			numBeforeFail--;
+    		} else {
+    			lastOffset = findOffIterator;
+    		}
+    		findOffIterator++;
     	}
+    	// onsets.add(lastOffset); // Will be removing lastOffset later.
+    	
+    	
+    	
+    	
+    	// We might want to change this to the distance that divides other numbers the best.
+    	// i.e. Praise to the man. Maybe what we have here is what we want, but later account for
+    	// what a beat actually is not the average difference between onsets. 
+    	int btdifference = avgOnsetDiff(onsetDiff(onsets));
+    	List<Integer> trackedBeats = ProcessSignal.beatTracker(onsets, btdifference);
+    	
+    	// Here I removed lastOffset.
+    	// This doesn't work onsets.remove(lastOffset);
+    	// TODO make sure I am not making similar stupid situations.
+    	// onsets.remove(onsets.size() - 1);
+    	
+    	List<Integer> notesOnBeat = new ArrayList<Integer>(trackedBeats);
+    	List<Double> notesOnBeatD = new ArrayList<Double>();
+    	for(int i = 0; i < freqs.size(); i++) { //TODO replace all arrays so that they are the same length. Except for onset ones. replace freqs.size() with that value.
+    		notesOnBeatD.add(0.0);
+    	}
+    	
+    	ListIterator<Integer> nOBIter = notesOnBeat.listIterator();
+    	while(nOBIter.hasNext()) {
+    		int onset = nOBIter.next();
+    		if(!onsets.contains(onset)) {
+    			nOBIter.set(null);
+    			notesOnBeatD.set(onset, 0.5);
+    		} else {
+    			notesOnBeatD.add(onset, 1.0);
+    		}
+    	}
+    	
+    	System.out.println(notesOnBeat);
+    	
+    	
+    	
+    	
+    	
+    	
+    	
+    	
+		List<Double> onsetAmps2 = ProcessSignal.onsetAmps(onsets, Arrays.asList(audioData.getAmp()), 200);
+		
+		DownBeatData data = new DownBeatData();
+		data.avgBeatLength = btdifference;
+		data.beats = trackedBeats;
+		data.onsetAmps = onsetAmps2;
+		//data.kSignature;
+		data.onsets = onsets;		
+		DownBeatDetection dbDetection = new DownBeatDetection(data);
+		
+		dbDetection.detect();
+    	
+		System.out.println("Note Durations:");
+    	for(double i : data.noteDurations) {
+    		System.out.print(i + " ");
+    	}
+    	System.out.println();
+    	
+/*    	final int[] POSSIBLE_BTS_PER_MSURE = {2,3,4,6,8};
+    	final int MAX_BTS_A_PICKUP_MSURE = POSSIBLE_BTS_PER_MSURE[POSSIBLE_BTS_PER_MSURE.length - 1] - 1;
+    	List<Pair<Integer, Integer>> offsetNMeasureLengths = new ArrayList<Pair<Integer, Integer>>();
+    	for(int offset = 0; offset < MAX_BTS_A_PICKUP_MSURE; offset++) {
+    		for(int btsPerMsure : POSSIBLE_BTS_PER_MSURE) {
+    			offsetNMeasureLengths.add(new Pair<Integer, Integer>(offset, btsPerMsure));
+    		}
+    	}
+    	
+    	System.out.println("offsetNMeasureLengths");
+    	for(Pair<Integer, Integer> p : offsetNMeasureLengths) {
+    		System.out.print(p + " ");
+    	}*/
+    	
+    	List<PossibleDownBeat> pDownBeats = PossibleDownBeat.intitalList();
+    	/***********************************************************************************************************/
+    	// Simplest and most accurate (non) down beat filter
+    	// A note (at least in hymns never crosses a measure). In other words, an onset must occur on the down beat.
+    	// For High on the Mountain Top, this removed all but 5 of the 40 possible offsetNMeasureLengths.
+    	/**********************************************************************************************************/
+    	ListIterator<PossibleDownBeat> pdbIter = pDownBeats.listIterator();
+    	while(pdbIter.hasNext()) {
+    		PossibleDownBeat p = pdbIter.next();
+    		int offset = p.getOffset();
+    		int msurLen = p.getLength();
+    		for(int i = offset; i < notesOnBeat.size(); i += msurLen) {
+    			if(notesOnBeat.get(i) == null) {
+    				System.out.println("Removed: " + p);
+    				pdbIter.remove();
+    				break;
+    			}
+    		}
+    	}
+    	
+    	System.out.println("Valid downbeats");
+    	pdbIter = pDownBeats.listIterator();
+    	while(pdbIter.hasNext()) {
+    		System.out.print(pdbIter.next() + " ");
+    	}
+    	
+    	
+    	
+    	pdbIter = pDownBeats.listIterator();
+    	System.out.println("asdffdas");
+    	while(pdbIter.hasNext()) {
+    		PossibleDownBeat p = pdbIter.next();
+    		int offset = p.getOffset();
+    		int msurLen = p.getLength();
+    		
+    		//This is banking on noteDurations to be exactly correct.
+    		ListIterator<Double> nDIter = data.noteDurations.listIterator(offset);
+    		double sum = 0;
+    		double first = 0;
+    		double second = 0;
+    		int numMeasures = 0;
+    		int numFirstLarger = 0;
+    		while(nDIter.hasNext()) {
+    			double duration = nDIter.next();
+    			sum += duration;
+				if(first == 0) {
+					first = duration;
+				} else if(second == 0) {
+					second = duration;
+				}
+    			if(sum >= msurLen) {
+    				// I am wondering if this shouldn't happen because of the first removal of down beats.
+    				// if(sum != msurLen) {System.out.println("pppppppppppppppppppppppppp"); pdbIter.remove(); break;}
+    				Util.verify(sum == msurLen,
+    						"This probably means that this isn't the correct downbeat."
+    						+ "Or if it is, note durations aren't correct / We have a meausre that doesn't add up for some reason.");
+    				numMeasures++;
+    				if(first > second) {
+    					numFirstLarger++; // TODO Add these to a list.
+    				}
+    				// We need another percentage. What though? all possible numFirstLarger's? All ones that are in the current pDownBeats.
+    				// 
+    				p.setScore(numFirstLarger/* / (double) numMeasures*/);
+    				System.out.println("\t\t" + p);
+    				first = second = sum = 0;
+    				
+    			}
+    		}
+    		
+    		// Maybe We could do add another one to see how the total amount of measures fit into groups of (4?)?
+    		
+    		/*for(int i = offset; i < notesOnBeat.size(); i += msurLen) {
+    			Util.verify(notesOnBeat.get(i) != null, "Should not be null");
+    			if(notesOnBeat.get(i) == null) {
+    				System.out.println("Removed: " + p);
+    				pdbIter.remove();
+    				break;
+    			}
+    		}*/    		
+    	}
+    	System.out.println(pDownBeats);
+    	//
+    	// Can make above more efficient.
+    	// 		listOfIndexesWhenNull - loop notesOnBeat and insert when null
+    	// 		loop listOfIndexesWhenNull
+    	//			loop remaining offsetNMeasureLengths
+    	//				if(index divides (msurLen - offset)
+    	//					remove offsetNMeasureLen
+    	// Output of above: 0:2 0:4 0:6 0:8 1:4 1:8 2:2 2:4 2:6 2:8 4:2 4:4 4:6 4:8 5:4 5:8 6:2 6:4 6:6 6:8 
+        // 7, 11, 15 - index of nulls -- they invalidate anything that is a multiple of these (with offset)
+    	// 2,4,6, and 8 doesn't divide 7 or 11 or 15
+    	// 4 and 8 doesn't divide 7-1 or 11-1 or 15-1 but 2 does divide 6, 10, and 14
+    	//
+    	
     	
     	
     	//TODO get its own graph
 //		updateGraph(fftGraph, audioData.getFrequencies());
     	if(true) {
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 70)));
-//    		/updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(freqs/*audioData.getNormalizedFrequencies()*/, 10)));
-    		fftGraph.update2List(prepareValuesForDisplay(freqs, 45));
+    	//	updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(freqs/*audioData.getNormalizedFrequencies()*/, 100)));
+    	//	fftGraph.update2List(prepareValuesForDisplay(onsetAmps2/*freqs*/, 5));
     		//fftGraph.update3List(prepareValuesForDisplay(Arrays.asList(smoothedFreqs),20));
+    		
+		    		//fftGraph.updateList(prepareValuesForDisplay(notesOnBeatD, 27000));
+		    		fftGraph.update2List(preparePositionsForDisplay(onsets, 40000/*25000*/));
+		    		//fftGraph.update3List(preparePositionsForDisplay(trackedBeats, 19000));
+    		//fftGraph.update3List(preparePositionsForDisplay(onsets, 19000));
+    		
+    		fftGraph.update3List(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 940));
+		    		//fftGraph.update3List(prepareValuesForDisplay(onsetAmps2, 4));
       		
     	//	updateGraph(fftGraph, Arrays.asList(preparePositionsForDisplay(rollOnsets, 19000)));
-    		updateGraph(fftGraph, Arrays.asList(preparePositionsForDisplay(percOnsets, 19000)));
+   // 		updateGraph(fftGraph, Arrays.asList(preparePositionsForDisplay(onsets, 19000)));
+   // 		updateGraph(fftGraph, prepareValuesForDisplay(corrValues, 500));
 //			fftGraph.update2List(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 15));
-    		fftGraph.update3List(prepareValuesForDisplay(maxCorrvalues, 5/*150000*/));
-			fftGraph.update3List(prepareValuesForDisplay(maxCorrvalues, 150000));
+    		//fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 5/*150000*/));
+			//fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 15000000));
     	} else {
     		fftGraph.clearData();
     		fftGraph.clearData2();
@@ -640,7 +856,7 @@ public class Main extends Application {
 			}
 		}
 		
-		List<Integer> onsets = new ArrayList<Integer>(audioData.getBeats());
+		
 		
 /*		onsets.remove(new Integer(951));
 		onsets.remove(new Integer(947));
@@ -650,23 +866,6 @@ public class Main extends Application {
 		        return o1.compareTo(o2);
 		    }amps
 		});*/
-		
-		/*
-		int beatDifference = 10;//16;
-		List<Integer> trackedBeats = ProcessSignal.beatTracker(onsets, beatDifference);
-		List<Double> onsetAmps = ProcessSignal.onsetAmps(onsets, Arrays.asList(audioData.getAmp()), 200);
-		*/
-		
-//		DownBeatData data = new DownBeatData();
-//		data.avgBeatLength = beatDifference;
-//		data.beats = trackedBeats;
-//		data.onsetAmps = onsetAmps;
-		//data.kSignature;
-//		data.onsets = onsets;
-		
-//		DownBeatDetection dbDetection = new DownBeatDetection(data);
-		
-//		dbDetection.detect();
 		
 		
 		if(false) {
@@ -748,14 +947,14 @@ public class Main extends Application {
 		
 		if(false) {
 			fftGraph.update3List(secondBeats /*beatPerc*/);			
-		} else if (true) {
+		} else if (false) {
 			Double[] amps = audioData.getAmp();
 			Double[] ampsAmped = new Double[amps.length];
 			for(int i = 0; i < ampsAmped.length; i++) {
 				if(i < 130)
-					ampsAmped[i] = amps[i] * 1600;//290;//28;
+					ampsAmped[i] = amps[i] * 240000;//290;//28;
 				else
-					ampsAmped[i] = amps[i] * 1600;
+					ampsAmped[i] = amps[i] * 240000;
 			}
 			
 			fftGraph.update3List(ampsAmped);
