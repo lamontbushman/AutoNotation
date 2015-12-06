@@ -72,7 +72,7 @@ public class OnsetDetection extends Thread {
 		Double[] maxAmps = new Double[data.getNumFFT()/*fftAbsolute.length*/];
 		
 		 //TODO this still needs to be fixed so, I don't have to divide by 2.
-		int fftLength = data.getFftLength() / 2 ;
+		int fftLength = data.getFftLength() /*/ 2*/ ;
 		
 		
 		double sum = 0;

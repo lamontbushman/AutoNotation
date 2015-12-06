@@ -53,20 +53,17 @@ public class ProcessSignal {
     
     public void process() {
     	//computeComplexAndOverlap(false/*doHann*/);
-    	long time1 = System.currentTimeMillis();
-    	long time2 = 0;
+
     	
+    	Util.timeDiff("OVERLAP");
     	computeComplexAndOverlap2(true/*doHann*/);
+    	Util.timeDiff("OVERLAP");
     	
-    	time2 = System.currentTimeMillis();
-    	System.out.println("!!!!!!!!!TIME TIME overlap: " + (time2 - time1));
-    	time1 = System.currentTimeMillis();
     	
+    	Util.timeDiff("FFTS");
     	computeFFtsAndFilter(); 
+    	Util.timeDiff("FFTS");
     	
-    	time2 = System.currentTimeMillis();
-    	System.out.println("!!!!!!!!!TIME TIME ffts: " + (time2 - time1));
-    	time1 = System.currentTimeMillis();
 
     	/*
     	computeAutoCorrelation();
@@ -83,11 +80,14 @@ public class ProcessSignal {
     	data.setFftLowPassAbsolute(fftAbsolute.toArray(new Double[fftAbsolute.size()]));*/
     	
     	
-    	
+    	Util.timeDiff("AMP");
     	OnsetDetection.computeAmp(data);
+    	Util.timeDiff("AMP");
 if(false) {    	
     	FundamentalFrequency ff = new FundamentalFrequency(data, 
-    			Arrays.asList(data.getFftLowPassAbsolute()));
+    			/*Arrays.asList(data.getFftLowPassAbsolute())*/
+    			data.getFftAbsolute()
+    			);
     	ff.start();
    
     	OnsetDetection od = new OnsetDetection(data, data.getFftAbsolute());
@@ -125,9 +125,7 @@ if(false) {
     	}
     	
     	
-    	time2 = System.currentTimeMillis();
-    	System.out.println("!!!!!!!!!TIME TIME od and ff: " + (time2 - time1));
-    	time1 = System.currentTimeMillis();
+
  
     	/*		//Add the last offset
 		for(int j = amps.length - 1; j > 0; j--) {
@@ -298,9 +296,7 @@ if(false) {
     	data.setTrackedBeats(trackedBeats);
     	*/
 		
-    	time2 = System.currentTimeMillis();
-    	System.out.println("!!!!!!!!!TIME TIME process onsets: " + (time2 - time1));
-    	time1 = System.currentTimeMillis();
+
 		
     	//TODO use both BeatDetection and onsets to get the first onset. We can validate the two to find better onsets!!!!!! This can improve accuracy a ton!!!
     	TimeSignature ts = bt.findTimeSignature(onsets.get(0)/*halfedOnsets.get(0) * 2*/, beatDifference);//TODO LDB Am I sure the *2 is what I want
@@ -316,9 +312,7 @@ if(false) {
     	
     	System.out.println("Time signature: " + ts2.numerator + " / " + ts2.denominator);
     	
-    	time2 = System.currentTimeMillis();
-    	System.out.println("!!!!!!!!!TIME TIME process onsets: " + (time2 - time1));
-    	time1 = System.currentTimeMillis();
+
     	
     	
     	/*
@@ -1007,39 +1001,50 @@ if(false) {
 	
 	//TODO ensure complexData is divisible by the fftLength");
 	private void computeFFtsAndFilter() {
-		int multiply = 2;
+		int multiply = 1;
 		
 		Complex[] complexData = data.getComplexData();
 		int origFFTLength = data.getFftLength();
 		
 		//Double the size of things
 		data.setFftAbsolute(new ArrayList<Double>(complexData.length * multiply));
-		data.setFftLowPassAbsolute(new Double[complexData.length * multiply]);
+		//data.setFftLowPassAbsolute(new Double[complexData.length * multiply]);
 
 		int newFFTLength = origFFTLength * multiply;
 		//TODO Future self this may be the source of your errors.
 		data.setFftLength(newFFTLength);
 		
 		List<Double> fftAbsolute = data.getFftAbsolute();
-		Double[] fftLowpass = data.getFftLowPassAbsolute();
+		//Double[] fftLowpass = data.getFftLowPassAbsolute();
 		
+		FFT.setNumBits(origFFTLength * multiply);
 		for(int i = 0; i < complexData.length; i+= origFFTLength) {
+			Util.totalTimeDiff("COPY");
 			Complex[] toFft = Arrays.copyOfRange(complexData, i, i + origFFTLength);
+			Util.totalTimeDiff("COPY");
+			
 			//Double the length and pad for linear (instead of cyclic) autocorrelation.
+			Util.totalTimeDiff("DOUBLE");
 			if(multiply > 1)
 				toFft = doubleAndPad(toFft);
+			Util.totalTimeDiff("DOUBLE");
 			
+			Util.totalTimeDiff("FORWARD");
 			FFT.fftForward(toFft);
+			Util.totalTimeDiff("FORWARD");
 			
 			//Low pass filter test
-			List<Double> lp = new ArrayList<Double>(toFft.length);//double[toFft.length];
+			Util.totalTimeDiff("ABSOLUTE");
+			//List<Double> lp = new ArrayList<Double>(toFft.length);//double[toFft.length];
 			for(int j = 0; j < toFft.length; j++) {
 				double absolute = toFft[j].absolute();
 				fftAbsolute.add(absolute);
+				
 				//fftAbsolute[(i*2)+j] = absolute;
-				fftLowpass[(i*multiply)+j] = absolute;		//TODO this is temporarily removing the low pass effectively!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!	
+	//			fftLowpass[(i*multiply)+j] = absolute;		//TODO this is temporarily removing the low pass effectively!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!	
 			//	lp.add(absolute);					//TODO removed this
 			}
+			Util.totalTimeDiff("ABSOLUTE");
 			
 			//TODO this is temporary !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
 /*			
@@ -1052,6 +1057,13 @@ if(false) {
 				//fftAbsolute[(i*2)+j] = toFft[j].absolute();
 			}*/
 		}
+		Util.totalTime("COPY");
+		Util.totalTime("DOUBLE");
+		Util.totalTime("FORWARD");
+		Util.totalTime("ABSOLUTE");
+		Util.totalTime("REV");
+		Util.totalTime("EXPO");
+		
 	}
 	
 	public void printNonConsecutiveNotes(boolean showFrequencies) {

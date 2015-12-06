@@ -118,12 +118,14 @@ public class Complex {
 	
 	public static double absolute(Complex n) {
 		//TODO Do I need to handle NaN;
-		return Math.sqrt(Math.pow(n.re,2) + Math.pow(n.im,2));
+		//return Math.sqrt(Math.pow(n.re,2) + Math.pow(n.im,2));
+		return Math.sqrt(n.re * n.re + n.im * n.im);
 	}
 	
 	public double absolute() {
 		//TODO Do I need to handle NaN;
-		return Math.sqrt(Math.pow(re,2) + Math.pow(im,2));
+		//return Math.sqrt(Math.pow(re,2) + Math.pow(im,2));
+		return Math.sqrt(re * re + im * im);
 	}
 	
 	public double absoluteSquare() {

@@ -453,4 +453,47 @@ public class Util {
 		}
 		return foundInts;
 	}
+	
+	private static Map<String, TimeData> currentTmes = new HashMap<String, TimeData>();
+	private static Map<String, Long> totalTimes = new HashMap<String, Long>();
+
+	public static long timeDiff(String text, boolean display) {
+		TimeData td = currentTmes.get(text);
+		long time = 0;
+		if(td == null) {
+			td = new TimeData(text);
+			currentTmes.put(text,td);
+		} else {
+			time = td.stop();
+			currentTmes.remove(text);
+		}
+		
+		if(display) {
+			System.out.println(td);
+		}
+		return time;
+	}
+	
+	public static long timeDiff(String text) {
+		return timeDiff(text, true);
+	}
+	
+	public static void totalTimeDiff(String text) {
+		long time = timeDiff(text, false);
+		if(time != 0) {
+			Long currentTime = totalTimes.get(text);
+			if(currentTime == null) {
+				currentTime = 0L;
+			}
+			totalTimes.put(text, currentTime + time);
+		}
+	}
+	
+	public static void totalTime(String text) {
+		Long currentTime = totalTimes.remove(text);
+		if(currentTime == null) {
+			currentTime = 0L;
+		}
+		System.out.println("TT: " + text + " " + currentTime);
+	}
 }

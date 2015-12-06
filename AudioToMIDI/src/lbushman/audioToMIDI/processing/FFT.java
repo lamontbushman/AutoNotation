@@ -22,31 +22,53 @@ public class FFT {
 		fft(input, -1);
 	}
 	
-	private static void fft(Complex input[], int direction) {
-		int n = input.length;
-		int numBits = (int) (Math.log(n) / LOG2);
+	/**
+	 * Doing this to speed up FFT
+	 * @param input
+	 */
+	private static int numBits = 0;
+	public static void setNumBits(int length) {
+		Util.timeDiff("LOG");
+		int n = length;
+		numBits = (int) (Math.log(n) / LOG2);
+		
 		if (Math.pow(2,numBits) != n) {
 			System.err.println("Length for DFT must be a power of 2.\n"
 					+ "Length: " + n + " numBits: " + numBits);
 			System.exit(0);
 		}
+		Util.timeDiff("LOG");
+	}
+	
+	private static int fftCount = 0;
+	private static void fft(Complex input[], int direction) {
+		int n = input.length;
+		if(numBits == 0)
+			System.exit(0);
 		
+		Util.totalTimeDiff("REV");
 		revBinaryPermute(input);
+		Util.totalTimeDiff("REV");
 		
 		for(int ldm = 1; ldm <= numBits; ldm++) {
 			int m = (int) Math.pow(2,ldm);
 			int mh = m/2;
 			
+			int count = 0;
 			//TODO make sure <= not <
 			for(int r = 0; r <= n - m; r+=m) { // n/m iterations
 				for(int j = 0; j < mh; j++) { // m/2 iterations
+					count++;
+					Util.totalTimeDiff("EXPO");
 					Complex e = Complex.expI(direction * 2.0*Math.PI*j/m);//check this
+					Util.totalTimeDiff("EXPO");
 					Complex u = input[r + j];
 					Complex v = Complex.mult(input[r + j + mh], e);
 					input[r + j] = Complex.add(u,v);
 					input[r + j + mh] = Complex.subt(u,v); //subtract wasn't tested
 				}
 			}
+			System.out.println((fftCount++) + "Inner for count: " +  count);
 		}
 	}
 	
@@ -63,6 +85,7 @@ public class FFT {
 
 	public static int revbin(int toReverse, int dataLength) {
 		int reverse = 0;
+		//int numBits = FFT.numBits;
 		int numBits = (int) (Math.log(dataLength) / LOG2);
 		while(numBits > 0) {
 			reverse <<= 1;

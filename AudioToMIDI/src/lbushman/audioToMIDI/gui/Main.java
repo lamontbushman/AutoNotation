@@ -3,8 +3,6 @@ package lbushman.audioToMIDI.gui;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -20,16 +18,12 @@ import lbushman.audioToMIDI.io.PlayAudio;
 import lbushman.audioToMIDI.io.ReadAudioFile;
 import lbushman.audioToMIDI.io.WriteAudioFile;
 import lbushman.audioToMIDI.processing.AudioData;
-import lbushman.audioToMIDI.processing.Complex;
 import lbushman.audioToMIDI.processing.DownBeatData;
 import lbushman.audioToMIDI.processing.DownBeatDetection;
 import lbushman.audioToMIDI.processing.FrequencyToNote;
 import lbushman.audioToMIDI.processing.FundamentalFrequency;
-import lbushman.audioToMIDI.processing.Pair;
-import lbushman.audioToMIDI.processing.Peaks;
 import lbushman.audioToMIDI.processing.PossibleDownBeat;
 import lbushman.audioToMIDI.processing.ProcessSignal;
-import lbushman.audioToMIDI.processing.RunningWindowStats;
 import lbushman.audioToMIDI.util.Util;
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
@@ -82,26 +76,30 @@ public class Main extends Application {
     }
 	        
     private void readFromFile(File file) {
+    	Util.timeDiff("RD");
 		ReadAudioFile audio = new ReadAudioFile(file);
 		audio.readFile();
 		audioData = null;
 		audioData = new AudioData(
 				audio.getStream().toByteArray(),
 				audio.getFormat());
+		Util.timeDiff("RD");
 		processSignal(audioData, null);
     }
     
     private void processSignal(AudioData audioData, File file) {		
 		// Play the data
-		playClip(audioData.getSampledData(), audioData.getFormat());
+		//playClip(audioData.getSampledData(), audioData.getFormat());
+    	
 		
 		// Save the data
 		if(file != null) {
 	    	writeToFile(audioData.getSampledData(), file, audioData.getFormat());
 		}
 		Util.println("Reset2");
+		Util.timeDiff("PS");
 		ProcessSignal ps = new ProcessSignal(audioData, 
-				/*0.120*/ 0.25/*overlap of FFTs*/, 2048 /*original fftLength */); //8192
+				/*0.120*/ /*0.25*/  1 /*overlap of FFTs*/, 2048 /*original fftLength */); //8192
 
 		
 		//16384//.25, 4096 moderate both
@@ -117,7 +115,7 @@ public class Main extends Application {
 		
 		
 		ps.process();
-		
+		Util.timeDiff("PS");
 		//TODO why is audioData being passed in?
 		this.audioData = audioData;
 		
@@ -150,7 +148,7 @@ if(false) {
 		audioData.setNormalizedFrequencies(normalized);
 }		
 		//Double fftAbsolute[] = audioData.getFftAbsolute();
-		Double fftLowpass[] = audioData.getFftLowPassAbsolute();
+		//Double fftLowpass[] = audioData.getFftLowPassAbsolute();
 		
 		/*for(int i = 0; i < fftAbsolute.length;i++) {
 			if(fftAbsolute[i] != fftLowpass[i]) {
@@ -161,7 +159,7 @@ if(false) {
 		
 		
 		//displayAC(0);
-		displayFFt(0, Arrays.asList(fftLowpass));
+		displayFFt(0, audioData.getFftAbsolute()/*Arrays.asList(fftLowpass)*/);
 		System.out.println("done with process signal");
     }
     
@@ -306,7 +304,9 @@ if(false) {
 			public void handle(ActionEvent arg0) {
 //				displayFFt(Integer.parseInt(nthField.getText()), audioData.getAutoCorrelationAbsolute());
 				displayFFt(Integer.parseInt(nthField.getText()), 
-						Arrays.asList(audioData.getFftLowPassAbsolute()));
+						audioData.getFftAbsolute()
+						/*Arrays.asList(audioData.getFftLowPassAbsolute())*/
+						);
 			}
 		});
         
@@ -392,6 +392,7 @@ if(false) {
     }
     
     private void displayFrequencies() {
+    	Util.timeDiff("DF");
     	List<Double> ffts = audioData.getFftAbsolute();
     	int fftLen = audioData.getFftLength();
     	int halfFFtLen = fftLen / 2;
@@ -627,9 +628,6 @@ if(false) {
 				topAmpV = amp;
 				topAmpI = i;
 			}
-    		
-    		
-    		/*if(at)*/
     	}
     	
     	values.sort(new Comparator<Double>() {
@@ -686,6 +684,8 @@ if(false) {
     			// TODO log the onset being removed.
     		}
     	}
+ }
+ 
     	
 								if(false) {    	
 								    	// add last offset to onsets temporarily just for elongating trackedBeats.
@@ -742,7 +742,7 @@ if(false) {
     	}
     	
     	System.out.println(notesOnBeat);
-    	
+   	
     	
     	
     	
@@ -769,8 +769,10 @@ if(false) {
     		System.out.print(i + " ");
     	}
     	System.out.println();
-    	
-/*    	final int[] POSSIBLE_BTS_PER_MSURE = {2,3,4,6,8};
+if(false) {     	
+
+	
+	/*    	final int[] POSSIBLE_BTS_PER_MSURE = {2,3,4,6,8};
     	final int MAX_BTS_A_PICKUP_MSURE = POSSIBLE_BTS_PER_MSURE[POSSIBLE_BTS_PER_MSURE.length - 1] - 1;
     	List<Pair<Integer, Integer>> offsetNMeasureLengths = new ArrayList<Pair<Integer, Integer>>();
     	for(int offset = 0; offset < MAX_BTS_A_PICKUP_MSURE; offset++) {
@@ -882,30 +884,30 @@ if(false) {
     	
     	//TODO get its own graph
 //		updateGraph(fftGraph, audioData.getFrequencies());
-    	
+Util.timeDiff("DF");
     	fftGraph.clearData();
 		fftGraph.clearData2();
 		fftGraph.clearData3();
     	if(true) {
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 70)));
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(freqs/*audioData.getNormalizedFrequencies()*/, 0.01)));
-    									//			fftGraph.update2List(prepareValuesForDisplay(freqs, 0.01));
-    											//	fftGraph.update2List(prepareValuesForDisplay(onsetAmps2/*freqs*/, 5));
+    											fftGraph.update3List(prepareValuesForDisplay(freqs, 4));
+    												//fftGraph.update2List(prepareValuesForDisplay(onsetAmps2/*freqs*/, 5));
     		//fftGraph.update3List(prepareValuesForDisplay(Arrays.asList(smoothedFreqs),20));
     		
-		    		//fftGraph.updateList(prepareValuesForDisplay(notesOnBeatD, 27000));
-		    									fftGraph.update2List(preparePositionsForDisplay(onsets, 40/*25000*/));
+    											//fftGraph.updateList(prepareValuesForDisplay(notesOnBeatD, 27));
+		    									fftGraph.update2List(preparePositionsForDisplay(onsets, 4050/*25000*/));
 		    		//fftGraph.updateList(preparePositionsForDisplay(trackedBeats, 30));
     		//fftGraph.update3List(preparePositionsForDisplay(onsets, 19000));
-//		    		fftGraph.updateList(prepareValuesForDisplay(corrValuesPerc, 150));
-		    									fftGraph.updateList(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 1));
+		    									fftGraph.updateList(prepareValuesForDisplay(corrValuesPerc, 55000));
+		    								//	fftGraph.update3List(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 1));
 		    		//fftGraph.update3List(prepareValuesForDisplay(onsetAmps2, 4));
       		
     	//	updateGraph(fftGraph, Arrays.asList(preparePositionsForDisplay(rollOnsets, 19000)));
    // 		updateGraph(fftGraph, Arrays.asList(preparePositionsForDisplay(onsets, 19000)));
    // 		updateGraph(fftGraph, prepareValuesForDisplay(corrValues, 500));
 //			fftGraph.update2List(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 15));
-		    									fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 150/*150000*/));
+		    									//fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 150/*150000*/));
 			//fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 15000000));
     	} else {
     		fftGraph.clearData();
@@ -1163,8 +1165,8 @@ if(true) {
     	List<Double> subList = absoluteData.subList(start, end);
     	
     	
-		FundamentalFrequency ff = new FundamentalFrequency(audioData, subList);
-		ff.computeFrequency(subList);
+/*		FundamentalFrequency ff = new FundamentalFrequency(audioData, subList);
+		ff.computeFrequency(subList);*/
 		
 		
 //		Util.println("Fundamental Frequency Index: " + audioData.getFrequencies().get(n));
