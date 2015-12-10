@@ -1,0 +1,48 @@
+
+n       = 6 MB bytes
+doubles = n * 8
+
+
+n       = 6 MB bytes									signal			- keep for audio playback
+ints    = n * 4										modified signal		- directly need for computing complex/overlap
+complex = doubles * 4 * 2								complexData		- needed for computing fft
+overlap = doubles * 4									overlap			- needed for computing amp
+fft     = doubles * 4 * 2								fft			- needed for computing everything else basically
+subfft  = (8<double> * 2048 * 2<two doubles>) / 1048576					subfft			- needed for nothing
+total   = 20doubles + (n * 4) + n + (8 * 2 * 2048 / 1048576)
+	= 160n + 4n + n +                    32768/1048576 = .03125 basically zero
+	= 165n
+        = 990MB
+
+-d64 -Xms1g -Xmx4g
+
+      = doubles * 24 + 16 * 2048
+      = n * 8 * 24 + 16 * 2048
+
+
+signal (keep) -> modified signal -> complexData(first han) and overlap(maybe stop hanning) consumes at most two sets of fft lengths at a time, then drops the last
+
+complexData -> fft one fftlength at a time
+overlap -> amps one...
+
+
+a end we need 64n + 32n = 96n = 576MB
+      
+
+2967039
+    105979 D: OVERLAP 105936
+    105980 B: FFTS
+    106297 B: LOG
+    106297 D: LOG 0
+TT: COPY 270
+TT: DOUBLE 3
+TT: FORWARD 19297
+TT: ABSOLUTE 729
+TT: REV 0
+TT: EXPO 0
+TT: NULLCHECK 0
+TT: NOTHING 0
+    133377 D: FFTS 27397
+    133885 B: AMP
+
+Increased max heap size to 4GB. The time it took to overlap vs fft seems evidence enough that it is a memory issue now, not speed
