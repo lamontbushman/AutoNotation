@@ -8,40 +8,40 @@ import java.util.concurrent.LinkedBlockingQueue;
  * INPUT - input type that is added to the input queue.
  * OUTPUT - output type that is added to the output queue
  */
-public abstract class ProcessQueue<INPUT,OUTPUT> extends Thread {
+public abstract class IOQueue<INPUT,OUTPUT> extends Thread {
 	private int index;
-	private LinkedBlockingQueue<ListElement<INPUT>> inputQueue;
-	private LinkedBlockingQueue<ListElement<OUTPUT>> outputQueue;
-	final private ListElement<INPUT> POISON = new ListElement<INPUT>(-1,null);
+	private LinkedBlockingQueue<Element<INPUT>> inputQueue;
+	private LinkedBlockingQueue<Element<OUTPUT>> outputQueue;
+	final private Element<INPUT> POISON = new Element<INPUT>(-1,null);
 	private int numThreads;
 	private boolean poisonReceived;
 	private boolean isFinished;
 	
 	//Calling class needs to set up the Element
-	ProcessQueue(int numThreads) {
+	IOQueue(int numThreads) {
 		this.numThreads = numThreads;
 		index = 0;
-		inputQueue = new LinkedBlockingQueue<ListElement<INPUT>>();
-		outputQueue = new LinkedBlockingQueue<ListElement<OUTPUT>>();
+		inputQueue = new LinkedBlockingQueue<Element<INPUT>>();
+		outputQueue = new LinkedBlockingQueue<Element<OUTPUT>>();
 		poisonReceived = false;
 		isFinished = false;
 	}
 	
-	public boolean add(List<INPUT> element) {
+	public boolean add(INPUT element) {
 		//TODO
 		//This might have some race conditions
 		//Put the check if POISON in a synchronized block.
 		if(!poisonReceived) {
-			if(inputQueue.add(new ListElement<INPUT>(index, element))) {
+			if(inputQueue.add(new Element<INPUT>(index, element))) {
 				index++;
 				return true;
 			}
-			throw new Error(ProcessQueue.this + " Queue full?");
+			throw new Error(IOQueue.this + " Queue full?");
 		}
 		return false;
 	}
 	
-	public LinkedBlockingQueue<ListElement<OUTPUT>> subscribe() {
+	public LinkedBlockingQueue<Element<OUTPUT>> subscribe() {
 		return outputQueue;
 	}
 	
@@ -79,24 +79,24 @@ public abstract class ProcessQueue<INPUT,OUTPUT> extends Thread {
 		return isFinished;
 	}
 	
-	public ArrayList<List<OUTPUT>> processedList() {
+	public List<OUTPUT> processedList() {
 		if(!isFinished) {
 			return null;
 		}
 		
-		ArrayList<List<OUTPUT>> results = new ArrayList<List<OUTPUT>>(outputQueue.size());
+		List<OUTPUT> results = new ArrayList<OUTPUT>(outputQueue.size());
 		
 		//Initialize empty array for results
 		for(int i = 0; i < outputQueue.size(); i++)
 			results.add(null);
 		
-		for(ListElement<OUTPUT> element : outputQueue) {
+		for(Element<OUTPUT> element : outputQueue) {
 			if(element == null) {
 				System.err.println("An element was null");
 			} else {
 				results.set(element.index, element.value);
 				//TODO find a better way to concatenate strings. Like PHP.
-				System.out.println("[" + element.index + "] " + element.value.get(0));
+				System.out.println("[" + element.index + "] " + element.value);
 			}
 		}
 		
@@ -107,18 +107,18 @@ public abstract class ProcessQueue<INPUT,OUTPUT> extends Thread {
 		return new Runnable() {
 			@Override
 			public void run() {
-				ListElement<INPUT> element;
+				Element<INPUT> element;
 				try {
 					element = inputQueue.take();
 
 					while(element != null && element != POISON) {		
-						ListElement<OUTPUT> result =  new ListElement<OUTPUT>(element.index, process(element.value));
+						Element<OUTPUT> result =  new Element<OUTPUT>(element.index, process(element.value));
 						outputQueue.add(result);
 						element = inputQueue.take();
 					}
 					
 					if(element == null) {
-						System.err.println("In " + ProcessQueue.this + "an element was null");
+						System.err.println("In " + IOQueue.this + "an element was null");
 					} else if(element == POISON) {
 						inputQueue.add(POISON);
 					}
@@ -130,5 +130,5 @@ public abstract class ProcessQueue<INPUT,OUTPUT> extends Thread {
 		};
 	}
 	
-	protected abstract List<OUTPUT> process(List<INPUT> element);
+	protected abstract OUTPUT process(INPUT element);
 }

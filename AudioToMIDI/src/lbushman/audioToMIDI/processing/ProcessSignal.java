@@ -50,10 +50,28 @@ public class ProcessSignal {
 		data.setNumFftsInOneSecond(numFFTsInOneSecond);
 		//numFFTsInOneSecond = (samplingRate / (newFFTLength / 2)) / overlap; // /2 because of doubling and padding
 	}
+	
+	public Double toAmp(List<Double> subSignal) {
+		return null;
+	}
     
     public void process() {
     	//computeComplexAndOverlap(false/*doHann*/);
+    	
+/*    	SignalQueue<Integer> intlist = new SignalQueue<Integer>();
+    	List<Integer> signal = Arrays.asList(data.getOriginalSignal());
+    	*/
+    	
+    	IOQueue<List<Double>, Double> toAmp;
+    	toAmp = new IOQueue<List<Double>, Double>(4) {
+			@Override
+			protected Double process(List<Double> subSignal) {
+				return toAmp(subSignal);
+			}
+		};
+    	
 
+    	
     	
     	Util.timeDiff("OVERLAP");
     	computeComplexAndOverlap2(true/*doHann*/);
@@ -848,6 +866,58 @@ if(false) {
 		System.out.println(sd);
 		
 		return (int) mode;
+	}
+	
+	private void computeComplexAndOverlap3(boolean doHann, ProcessQueue<Double, Double> toAmps,
+			ProcessQueue<Complex, Double> toComplex) {
+		int fftLength = data.getFftLength();
+		double overlapPercentage = data.getOverlapPercentage();
+		int[] signal = data.getOriginalSignal();
+		int increment = (int) (fftLength * overlapPercentage);
+		//Rough estimate of new size.
+		List<Complex> complexData = new ArrayList<Complex>((int) ((1/overlapPercentage) * signal.length));
+		List<Double> overlapedData = new ArrayList<Double>();
+		
+		Double[] weights = null;
+		if(doHann) {
+			weights = getHannWeights(fftLength);
+			data.setDataHanned();
+		}
+		data.setDataWindowed();
+		double value;
+		
+		//int windowIndex = 0;
+		//http://dsp.stackexchange.com/questions/15563/what-exactly-is-the-effect-of-a-hann-window-on-the-fft-output
+		for(int i = 0; i <= signal.length - increment; i+= increment) {
+			// System.out.println(i + " " + signal.length);
+			int hanIndex = 0;
+			for(int j = i; j < i + fftLength; j++) {
+				// System.out.println(j);
+				//System.out.println("w: " + windowIndex + " j:" + j);
+				if(j < signal.length)
+					if(data.isDataHanned()) {
+						value = weights[hanIndex] * signal[j];
+					}
+					else {
+						value = signal[j];
+					}
+				else
+					value = 0;
+				
+				overlapedData.add(Math.abs(value));
+				complexData.add(new Complex(value));
+				
+				//windowIndex++;
+				hanIndex++;
+			}
+		}
+		Util.timeDiff("overlapArray");
+		data.setOverlappedData(Arrays.asList(overlapedData.toArray(new Double[overlapedData.size()])));
+		Util.timeDiff("overlapArray");
+		Util.timeDiff("complexArray");
+		data.setComplexData(complexData.toArray(new Complex[complexData.size()]));
+		Util.timeDiff("complexArray");
+
 	}
 	
 	private void computeComplexAndOverlap2(boolean doHann) {
