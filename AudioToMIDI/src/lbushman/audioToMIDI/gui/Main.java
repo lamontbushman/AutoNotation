@@ -24,6 +24,7 @@ import lbushman.audioToMIDI.processing.FrequencyToNote;
 import lbushman.audioToMIDI.processing.FundamentalFrequency;
 import lbushman.audioToMIDI.processing.PossibleDownBeat;
 import lbushman.audioToMIDI.processing.ProcessSignal;
+import lbushman.audioToMIDI.processing.RunningWindowStats;
 import lbushman.audioToMIDI.util.Util;
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
@@ -99,7 +100,7 @@ public class Main extends Application {
 		Util.println("Reset2");
 		Util.timeDiff("PS");
 		ProcessSignal ps = new ProcessSignal(audioData, 
-				/*0.120*/ /*0.25*/  1 /*overlap of FFTs*/, 2048 /*original fftLength */); //8192
+				/*0.120*/ /*0.25*/ .25 /*0.125 *//*overlap of FFTs*/, 2048 /*original fftLength */); //8192
 
 		
 		//16384//.25, 4096 moderate both
@@ -130,9 +131,9 @@ public class Main extends Application {
 		
 		//TODO show notes where consecutive duplicates are not shown.
 		//ps.printNonConsecutiveNotes(false);
-	
+if(false) {	
 		List<Double> spectralFlux = audioData.getSpectralFlux();
-if(false) {
+
 		displayCenterGraph(spectralFlux);
 
 		List<Double> normalized = new ArrayList<Double>();
@@ -411,6 +412,7 @@ if(false) {
 	    	int from = 1; // be careful if you change from 1; logic has to change for position in list.
 	    	int to = halfFFtLen / 4;
 	    	//TODO maybe create a width.
+	    	double lkjh = 0;
 	    	for(int corrI = from; corrI < to; corrI++) {
 	    		double ampTotal = 0;
 	    		int position = corrI;
@@ -423,12 +425,48 @@ if(false) {
 	    		correlations.add(ampTotal / numAmps);
 	    	}
 	    	int correlation = Util.maxIndex(correlations, 0, correlations.size());
+	    	int max = Util.maxIndex(halfFft, Math.max(0, correlation - 5), Math.min(halfFft.size() - 1, correlation + 5));
+	    	
+	    	RunningWindowStats rws = new RunningWindowStats(8);
+	    	for(int i = 0; i < correlations.size(); i++) {
+	    		double cor = correlations.get(i);
+	    		double mean = rws.mean();
+	    		if((cor - mean) / mean > 2.6) {
+	    			max = i;
+	    			break;
+	    		}
+	    		rws.add(cor);
+	    	}
+	    	max = Util.maxIndex(halfFft, Math.max(0, max - 5), Math.min(halfFft.size() - 1, max + 5));
+	    	
+	    	
+	    	int cor = -1;
 	    	Double sum  = Util.sum(correlations);
+	    	double average = sum / halfFFtLen;
 	    	corrValuesPerc.add(correlations.get(correlation) / sum);
+	    	List<Double> percValues = new ArrayList<Double>();
+	    	for(int i = 0; i < correlations.size(); i++) {
+	    		if(correlations.get(i) / average >= 0.03) {
+	    			cor = i;
+	    		}
+	    		percValues.add(correlations.get(i) / average);
+	    	}
+	    //	int max = Util.maxIndex(halfFft, Math.max(0, cor - 5), Math.min(halfFft.size() - 1, cor + 5));
+	    	
 	    	corrValues.add(correlations.get(correlation));
-	    	double frequency = FundamentalFrequency.computeFrequency(correlation, audioData);
+	    	double frequency = FundamentalFrequency.computeFrequency(max/*correlation*/, audioData);
 	    	frequency = FrequencyToNote.findFrequency(frequency);
 	    	freqs.add(frequency);
+	    	if(time == 25 &&  frequency == 880) {
+	    		System.out.println("time: " + time);
+	    		fftGraph.updateList(prepareValuesForDisplay(correlations, 1));
+	    	//	fftGraph.updateList(prepareValuesForDisplay(percValues, 1/*00000*/));
+	    		//fftGraph.update2List(prepareValuesForDisplay(halfFft, 1));
+	    		fftGraph.clearData2();
+	    		fftGraph.clearData3();
+	    		return;
+	    	}
+	    	
     	}
     	
     	List<Integer> rollOnsets = new ArrayList<Integer>();
@@ -888,6 +926,10 @@ Util.timeDiff("DF");
     	fftGraph.clearData();
 		fftGraph.clearData2();
 		fftGraph.clearData3();
+		System.out.println(freqs);
+		for(double freq : freqs) {
+			System.out.print(FrequencyToNote.findNote(freq) + " ");
+		}
     	if(true) {
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 70)));
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(freqs/*audioData.getNormalizedFrequencies()*/, 0.01)));

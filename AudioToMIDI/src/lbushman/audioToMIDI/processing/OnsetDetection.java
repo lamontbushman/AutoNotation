@@ -67,7 +67,7 @@ public class OnsetDetection extends Thread {
 	}
 	
 	public static void computeAmp(AudioData data) {
-		Complex[] overlapData = data.getComplexData();
+		List<Double> overlapData = data.getOverlappedData();
 		
 		Double[] maxAmps = new Double[data.getNumFFT()/*fftAbsolute.length*/];
 		
@@ -77,12 +77,20 @@ public class OnsetDetection extends Thread {
 		
 		double sum = 0;
 		int maxI = 0;
-		for(int i = 0; i < overlapData.length; i+= fftLength) {
-			sum = 0;
-			for(int j = 0; j < fftLength; j++)
-				sum += overlapData[i+j].absolute();
-			maxAmps[maxI] = sum/fftLength;
+		for(int i = 0; i < overlapData.size(); i+= fftLength) {
+			//if(overlapData.get(i+512) < 0);
+				//System.out.println(overlapData.get(i+512));
+			List<Double> sub = overlapData.subList(i, i + fftLength);
+			double avg = Util.averageD(sub);
+			maxAmps[maxI] = avg;
+//			System.out.println("size: " + sub.size() + " " + avg + " " + i);
 			maxI++;
+			
+/*			sum = 0;
+			for(int j = 0; j < fftLength; j++)
+				sum += overlapData.get(i+j);
+			maxAmps[maxI] = sum/fftLength;
+			maxI++;*/
 		}
 		data.setAmp(maxAmps);
 	}

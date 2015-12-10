@@ -262,8 +262,8 @@ public class Util {
     
     public static double averageD(List<Double> modes) {
     	double total = 0;
-    	for(Number n : modes) {
-    		total += n.doubleValue();
+    	for(double n : modes) {
+    		total += n;
     	}
     	return total / modes.size();
     }

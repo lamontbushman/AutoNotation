@@ -57,11 +57,13 @@ public class ProcessSignal {
     	
     	Util.timeDiff("OVERLAP");
     	computeComplexAndOverlap2(true/*doHann*/);
+    	data.clearOriginalSignal(); // Last time we're using it. Save memory.
     	Util.timeDiff("OVERLAP");
     	
     	
     	Util.timeDiff("FFTS");
-    	computeFFtsAndFilter(); 
+    	computeFFtsAndFilter();
+    	data.setComplexData(null); // Last time we're using it. Save memory.
     	Util.timeDiff("FFTS");
     	
 
@@ -82,6 +84,7 @@ public class ProcessSignal {
     	
     	Util.timeDiff("AMP");
     	OnsetDetection.computeAmp(data);
+    	data.setOverlappedData(null); // Last time we're using it. Save memory.
     	Util.timeDiff("AMP");
 if(false) {    	
     	FundamentalFrequency ff = new FundamentalFrequency(data, 
@@ -336,7 +339,7 @@ if(false) {
     public static List<Double> onsetAmps(List<Integer> onsets, List<Double> amps, double multiplier) {
     	final double PERCENTAGE = 0.80;
     	final int DEFAULT_SEARCH_LENGTH = 3;
-    	int searchLen = DEFAULT_SEARCH_LENGTH;
+    	int searchLen = 0;
     	int onsetAmpsListSize = onsets.get(onsets.size() - 1) + 1;
     	int onsetListSize = onsets.size();
     	
@@ -353,9 +356,9 @@ if(false) {
     			nextOnset = onsets.get(i + 1);
     			int diff = nextOnset - onset;
     			searchLen = (int) Math.round(diff * PERCENTAGE);
-    		} else {
-    			searchLen = searchLen;
-    		}
+    		} else if (searchLen == 0){
+    			searchLen = DEFAULT_SEARCH_LENGTH;
+    		} // else  Use previous searchLen
     		
     		int searchEnd = onset + searchLen;
     		searchEnd = (searchEnd > amps.size()) ? onsetAmpsListSize : searchEnd;
@@ -854,36 +857,52 @@ if(false) {
 		int increment = (int) (fftLength * overlapPercentage);
 		//Rough estimate of new size.
 		List<Complex> complexData = new ArrayList<Complex>((int) ((1/overlapPercentage) * signal.length));
+		List<Double> overlapedData = new ArrayList<Double>();
 		
-		List<Double> weights = null;
+		Double[] weights = null;
 		if(doHann) {
 			weights = getHannWeights(fftLength);
 			data.setDataHanned();
 		}
 		data.setDataWindowed();
+		double value;
 		
 		//int windowIndex = 0;
 		//http://dsp.stackexchange.com/questions/15563/what-exactly-is-the-effect-of-a-hann-window-on-the-fft-output
 		for(int i = 0; i <= signal.length - increment; i+= increment) {
+			// System.out.println(i + " " + signal.length);
 			int hanIndex = 0;
 			for(int j = i; j < i + fftLength; j++) {
+				// System.out.println(j);
 				//System.out.println("w: " + windowIndex + " j:" + j);
 				if(j < signal.length)
-					if(data.isDataHanned())
-						complexData.add(new Complex(hann(hanIndex, signal[j], weights)));
-					else
-						complexData.add(new Complex(signal[j]));
+					if(data.isDataHanned()) {
+						value = weights[hanIndex] * signal[j];
+					}
+					else {
+						value = signal[j];
+					}
 				else
-					complexData.add(new Complex(0));
+					value = 0;
+				
+				overlapedData.add(Math.abs(value));
+				complexData.add(new Complex(value));
+				
 				//windowIndex++;
 				hanIndex++;
 			}
 		}
+		Util.timeDiff("overlapArray");
+		data.setOverlappedData(Arrays.asList(overlapedData.toArray(new Double[overlapedData.size()])));
+		Util.timeDiff("overlapArray");
+		Util.timeDiff("complexArray");
 		data.setComplexData(complexData.toArray(new Complex[complexData.size()]));
+		Util.timeDiff("complexArray");
+
 	}
             	
 	private void computeComplexAndOverlap(boolean doHann) {
-		int fftLength = data.getFftLength();
+/*		int fftLength = data.getFftLength();
 
 		double overlapPercentage = data.getOverlapPercentage();
 		//TODO this is only working for 50% right now
@@ -929,23 +948,22 @@ if(false) {
 			}
 		}
 		data.setComplexData(complexData);
+		
+	*/
 	}
 	
-	private static List<Double> getHannWeights(int fftLength) {
-    	List<Double> weights = new ArrayList<Double>();
+	private static Double[] getHannWeights(int fftLength) {
+		Double[] weights = new Double[fftLength];
     	for(int i = 0; i < fftLength; i++) {
     		double weight = 
     				Math.pow(
     	    				Math.sin((Math.PI*i) / (fftLength -1)),
     	    				2);
-    		weights.add(weight);
+    		weights[i] = weight;
     	}
     	return weights;
 	}
 	
-	private double hann(int index, double value, List<Double> weights) {
-		return weights.get(index) * value;
-	}
 				
 	/**
 	 * Applies an RC low-pass filter to x 
@@ -1018,9 +1036,12 @@ if(false) {
 		//Double[] fftLowpass = data.getFftLowPassAbsolute();
 		
 		FFT.setNumBits(origFFTLength * multiply);
+		FFT fft = FFT.getInstance(origFFTLength * multiply);
+		
+		
 		for(int i = 0; i < complexData.length; i+= origFFTLength) {
 			Util.totalTimeDiff("COPY");
-			Complex[] toFft = Arrays.copyOfRange(complexData, i, i + origFFTLength);
+			Complex[] toFft = Arrays.copyOfRange(complexData, i, i + origFFTLength); // TODO don't need to copy if in a List trashing data after this.
 			Util.totalTimeDiff("COPY");
 			
 			//Double the length and pad for linear (instead of cyclic) autocorrelation.
@@ -1030,7 +1051,8 @@ if(false) {
 			Util.totalTimeDiff("DOUBLE");
 			
 			Util.totalTimeDiff("FORWARD");
-			FFT.fftForward(toFft);
+			//FFT.fftForward(toFft);
+			fft.fft(toFft);
 			Util.totalTimeDiff("FORWARD");
 			
 			//Low pass filter test
@@ -1063,7 +1085,8 @@ if(false) {
 		Util.totalTime("ABSOLUTE");
 		Util.totalTime("REV");
 		Util.totalTime("EXPO");
-		
+		Util.totalTime("NULLCHECK");
+		Util.totalTime("NOTHING");
 	}
 	
 	public void printNonConsecutiveNotes(boolean showFrequencies) {

@@ -4,6 +4,8 @@ import java.util.List;
 
 import javax.sound.sampled.AudioFormat;
 
+import lbushman.audioToMIDI.util.Util;
+
 public class AudioData {
 	private AudioFormat format;
 	private byte[] sampledData;
@@ -35,6 +37,7 @@ public class AudioData {
 	private List<Double> beatsPercent;
 	private List<Integer> trackedBeats;
 	private BeatDetection bt;
+	private List<Double> overlappedData;
 	
 	public AudioData(byte[] samples, AudioFormat audioFormat) {
 		format = audioFormat;
@@ -46,9 +49,11 @@ public class AudioData {
 	}
 	
 	private int[] toIntArray(byte[] bites) {
+		Util.timeDiff("toIntArray");
 		//TODO Check format is set
+		int[] array = null;
 		if(format.getSampleSizeInBits() == 16) {
-			int[] array = new int[bites.length / 2];
+			array = new int[bites.length / 2];
 			int arrayIndex = 0;
 			int first = 0 ;
 			int second = 1;
@@ -61,18 +66,17 @@ public class AudioData {
 				//System.out.print(Integer.toHexString(array[arrayIndex]) + " ");
 				arrayIndex++;
 			}
-			return array;
 		} else if(format.getSampleSizeInBits() == 8){
-			int[] array = new int[bites.length];
+			array = new int[bites.length];
 			for(int i = 0; i < bites.length; i++) {
 				array[i] = bites[i];
 //				System.out.println(array[i] + "  " + bites[i]);
 			}
-			return array;
 		} else {
 			System.err.println("Unexpected sample size in bits.");
-			return null;
 		}
+		Util.timeDiff("toIntArray");
+		return array;
 	}
 	
 	public int getNumFFT() {
@@ -107,6 +111,10 @@ public class AudioData {
 		return originalSignal;
 	}
 	
+	public void clearOriginalSignal() {
+		this.originalSignal = null;
+	}
+
 	public Complex[] getComplexData() {
 		return complexData;
 	}
@@ -285,5 +293,11 @@ public class AudioData {
 		this.bt = bt;
 	}
 
-	
+	public void setOverlappedData(List<Double> overlapedData) {
+		this.overlappedData = overlapedData;
+	}
+
+	public List<Double> getOverlappedData() {
+		return overlappedData;
+	}
 }

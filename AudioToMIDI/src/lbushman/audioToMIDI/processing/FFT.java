@@ -4,22 +4,23 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import javax.management.loading.MLet;
 
 import lbushman.audioToMIDI.util.Util;
 
 public class FFT {
 	final static double LOG2 = Math.log(2);
-	
-	private FFT() {
-	}
-	
+		
 	public static void fftForward(Complex input[]) {
-		fft(input, 1);
+		fftOld(input, 1);
 	}
 	
 	public static void fftInverse(Complex input[]) {
-		fft(input, -1);
+		fftOld(input, -1);
 	}
 	
 	/**
@@ -27,7 +28,9 @@ public class FFT {
 	 * @param input
 	 */
 	private static int numBits = 0;
+	private static int length;
 	public static void setNumBits(int length) {
+		FFT.length = length;
 		Util.timeDiff("LOG");
 		int n = length;
 		numBits = (int) (Math.log(n) / LOG2);
@@ -39,40 +42,116 @@ public class FFT {
 		}
 		Util.timeDiff("LOG");
 	}
-	
-	private static int fftCount = 0;
-	private static void fft(Complex input[], int direction) {
-		int n = input.length;
-		if(numBits == 0)
-			System.exit(0);
 		
-		Util.totalTimeDiff("REV");
-		revBinaryPermute(input);
-		Util.totalTimeDiff("REV");
+	private static int fftCount = 0;
+
+	private static void fftOld(Complex input[], int direction) {
+		int n = input.length;
+		Util.verify(n == length, "Input length must be the same size as the class was constructed. n: " + n + " numBits: " + numBits);
+numBits = (int) (Math.log(n) / LOG2);
+		
+		if (Math.pow(2,numBits) != n) {
+			System.err.println("Length for DFT must be a power of 2.\n"
+					+ "Length: " + n + " numBits: " + numBits);
+			System.exit(0);
+		}
+		
+		revBinaryPermuteOld(input);
 		
 		for(int ldm = 1; ldm <= numBits; ldm++) {
 			int m = (int) Math.pow(2,ldm);
 			int mh = m/2;
 			
-			int count = 0;
 			//TODO make sure <= not <
 			for(int r = 0; r <= n - m; r+=m) { // n/m iterations
 				for(int j = 0; j < mh; j++) { // m/2 iterations
-					count++;
-					Util.totalTimeDiff("EXPO");
+					//Util.totalTimeDiff("EXPO");			
 					Complex e = Complex.expI(direction * 2.0*Math.PI*j/m);//check this
-					Util.totalTimeDiff("EXPO");
+					//Util.totalTimeDiff("EXPO");
 					Complex u = input[r + j];
 					Complex v = Complex.mult(input[r + j + mh], e);
 					input[r + j] = Complex.add(u,v);
 					input[r + j + mh] = Complex.subt(u,v); //subtract wasn't tested
 				}
 			}
-			System.out.println((fftCount++) + "Inner for count: " +  count);
+			//System.out.println((fftCount++) + "Inner for count: " +  count);
 		}
 	}
 	
-	public static void revBinaryPermute(Complex input[]) {
+	private final int mNumBits;
+	private final int mLength;
+	private static final double TWO_PI = 2.0*Math.PI;
+	private Complex[][] fftExpITable;
+	private static FFT fft;
+	private FFT(int length) {
+		mLength = length;
+		// precompute data for all ffts of given length 
+		
+		mNumBits = (int) (Math.log(length) / LOG2);
+		
+		if (Math.pow(2,numBits) != length) {
+			System.err.println("Length for DFT must be a power of 2.\n"
+					+ "Length: " + length + " mNumBits: " + mNumBits);
+			System.exit(0);
+		}
+		
+		fftExpITable = new Complex[mNumBits][];
+		int mh = 1;
+		int m = 2;
+		for(int ldm = 0; ldm < mNumBits; ldm++) {
+			fftExpITable[ldm] = new Complex[mh];
+			for(int j = 0; j < mh; j++) {
+				fftExpITable[ldm][j] = Complex.expI(TWO_PI*j/m);
+			}
+			m *= 2;
+			mh *= 2;
+		}
+	}
+	
+	public static FFT getInstance(int length) {
+		if(FFT.fft != null && FFT.fft.mLength == length) {
+			return FFT.fft;
+		} else {
+			FFT fft = new FFT(length);
+			FFT.fft = fft;
+			return fft;
+		}
+	}
+	
+	
+	public void fft(Complex input[]) {
+		int n = input.length;
+		//Util.totalTimeDiff("NOTHING");
+		Util.verify(n == mLength, "Input length must be the same size as the class was constructed.");
+		//Util.totalTimeDiff("NOTHING");
+		//Util.totalTimeDiff("REV");
+		revBinaryPermute(input);
+		//Util.totalTimeDiff("REV");
+		
+		//Util.totalTimeDiff("NOTHING");
+		//Util.totalTimeDiff("NOTHING");
+		
+		Complex[] subExpI;
+
+		int mh = 1;
+		int m = mh * 2;
+		for(int ldm = 0; ldm < mNumBits; ldm++) {
+			subExpI = fftExpITable[ldm];
+			for(int r = 0; r <= n - m; r+=m) { // n/m iterations
+				for(int j = 0; j < mh; j++) { // m/2 iterations
+					Complex e = subExpI[j]; // Complex.expI(TWO_PI*j/m);//check this
+					Complex u = input[r + j];
+					Complex v = Complex.mult(input[r + j + mh], e);
+					input[r + j] = Complex.add(u,v);
+					input[r + j + mh] = Complex.subt(u,v); //subtract wasn't tested
+				}
+			}
+			m *= 2;
+			mh *= 2;
+		}
+	}
+		
+	public void revBinaryPermute(Complex input[]) {
 		for(int i = 0; i < input.length; i++) {
 			int r = revbin(i,input.length);
 			if(r > i) {
@@ -82,8 +161,32 @@ public class FFT {
 			}
 		}
 	}
+	
+	public int revbin(int toReverse, int dataLength) {
+		int reverse = 0;
+		int numBits = mNumBits;
+		// int numBits = (int) (Math.log(dataLength) / LOG2);
+		while(numBits > 0) {
+			reverse <<= 1;
+			reverse += toReverse & 1;
+			toReverse >>= 1;
+			numBits--;
+		}
+		return reverse;
+	}
+	
+	public static void revBinaryPermuteOld(Complex input[]) {
+		for(int i = 0; i < input.length; i++) {
+			int r = revbinOld(i,input.length);
+			if(r > i) {
+				Complex temp = input[i];
+				input[i] = input[r];
+				input[r] = temp;
+			}
+		}
+	}
 
-	public static int revbin(int toReverse, int dataLength) {
+	public static int revbinOld(int toReverse, int dataLength) {
 		int reverse = 0;
 		//int numBits = FFT.numBits;
 		int numBits = (int) (Math.log(dataLength) / LOG2);
