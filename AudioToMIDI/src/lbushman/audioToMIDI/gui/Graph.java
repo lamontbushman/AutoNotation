@@ -94,7 +94,7 @@ public class Graph extends BorderPane {
 		minMaxIndex.setEditable(false);		
 		
 		Button minimumIndexButton = newButton(
-				"Minimum Index Between", new EventHandler<ActionEvent>() {
+				"Min I", new EventHandler<ActionEvent>() {
 					@Override
 					public void handle(ActionEvent arg0) {
 						int minI = minIndex(Integer.parseInt(begField.getText().toString()),
@@ -104,7 +104,7 @@ public class Graph extends BorderPane {
 		});
 		
 		Button maximumIndexButton = newButton(
-				"Maximum Index Between", new EventHandler<ActionEvent>() {
+				"Max I", new EventHandler<ActionEvent>() {
 					@Override
 					public void handle(ActionEvent arg0) {
 						int maxI = maxIndex(Integer.parseInt(begField.getText().toString()),
@@ -114,22 +114,69 @@ public class Graph extends BorderPane {
 		});
 		
 		TextField indexField = newField("index", null);
-	    TextField valueAtIndex = newField(null, "Value at Index");
-	    valueAtIndex.setPrefWidth(200);
+	    TextField valueAtIndex = newField(null, "Val@I");
+	    valueAtIndex.setPrefWidth(2);
 	    valueAtIndex.setEditable(false);
 		
 	    Button valueAtIndexButton = newButton(
-	    		"Value at index", new EventHandler<ActionEvent>() {
+	    		"Val@I", new EventHandler<ActionEvent>() {
 	    			@Override
 	    			public void handle(ActionEvent arg0) {
 	    				valueAtIndex.setText(valueAtIndex(Integer.parseInt(indexField.getText()))+"");
 	    			}
 		});
 	    
+	    
+		TextField widthField = newField("width", null);
+		widthField.setPrefWidth(50);
+		TextField windowField = newField("nth", null);
+	    valueAtIndex.setPrefWidth(50);
+	    Button showWindow = newButton(
+	    		"Show Window", new EventHandler<ActionEvent>() {
+					@Override
+					public void handle(ActionEvent arg0) {
+						int width = Integer.parseInt(widthField.getText().toString());
+						int n = Integer.parseInt(windowField.getText().toString());
+						int beg = n * width;
+						int end = beg + width;
+						setRange(beg, end, true);
+					}
+				});
+	    Button nextWindow = newButton(
+	    		"Next", new EventHandler<ActionEvent>() {
+					@Override
+					public void handle(ActionEvent arg0) {
+						int width = Integer.parseInt(widthField.getText().toString());
+						int n = Integer.parseInt(windowField.getText().toString());
+						n++;
+						windowField.setText(n+"");
+						int beg = n * width;
+						int end = beg + width;
+						setRange(beg, end, true);
+					}
+				});
+	    Button previousWindow = newButton(
+	    		"Previous", new EventHandler<ActionEvent>() {
+					@Override
+					public void handle(ActionEvent arg0) {
+						int width = Integer.parseInt(widthField.getText().toString());
+						int n = Integer.parseInt(windowField.getText().toString());
+						n--;
+						windowField.setText(n+"");
+						int beg = n * width;
+						int end = beg + width;
+						setRange(beg, end, true);
+					}
+				});
+	    
 	    hbox.getChildren().addAll(begField, endField, displayFFTButton, 
 	    		minimumIndexButton, maximumIndexButton, minMaxIndex, indexField, 
-	    		valueAtIndexButton, valueAtIndex);
+	    		valueAtIndexButton, valueAtIndex, widthField, windowField, showWindow, nextWindow, previousWindow);
 	    setTop(hbox);
+	    
+	    
+	    
+	    
 /*	    	        
 	        Button frequencyButton = new Button("Show Frequencies");
 	        frequencyButton.setOnAction(new EventHandler<ActionEvent>() {
@@ -211,7 +258,9 @@ public class Graph extends BorderPane {
 		if(data != null && !series.getData().isEmpty()) {
 			clearData();
 			for(int i = begIndex; i < endIndex; i++) {
-				
+				if(i == data.length) {
+					break;
+				}
 				if(startZero) {
 					series.getData().add(new Data<Number, Number>(i - begIndex, data[i]));
 				}
@@ -224,6 +273,9 @@ public class Graph extends BorderPane {
 		if(data2 != null && !series2.getData().isEmpty()) {
 			clearData2();
 			for(int i = begIndex; i < endIndex; i++) {
+				if(i == data2.length) {
+					break;
+				}
 				if(startZero) {
 					series2.getData().add(new Data<Number, Number>(i - begIndex, data2[i]));
 				}
@@ -236,6 +288,9 @@ public class Graph extends BorderPane {
 		if(data3 != null && !series3.getData().isEmpty()) {
 			clearData3();	
 			for(int i = begIndex; i < endIndex; i++) {
+				if(i == data3.length) {
+					break;
+				}
 				if(startZero) {
 					series3.getData().add(new Data<Number, Number>(i - begIndex, data3[i]));
 				}

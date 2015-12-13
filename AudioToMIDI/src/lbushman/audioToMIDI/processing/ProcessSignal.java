@@ -14,6 +14,12 @@ import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.Spliterator.OfInt;
+import java.util.function.IntConsumer;
+import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import java.util.TreeSet;
 
 import lbushman.audioToMIDI.io.KeySignature;
@@ -21,6 +27,7 @@ import lbushman.audioToMIDI.io.Note;
 import lbushman.audioToMIDI.io.SheetData;
 import lbushman.audioToMIDI.io.SheetNote;
 import lbushman.audioToMIDI.io.TimeSignature;
+import lbushman.audioToMIDI.util.JArray;
 import lbushman.audioToMIDI.util.Util;
 
 public class ProcessSignal {
@@ -51,8 +58,89 @@ public class ProcessSignal {
 		//numFFTsInOneSecond = (samplingRate / (newFFTLength / 2)) / overlap; // /2 because of doubling and padding
 	}
 	
-	public Double toAmp(List<Double> subSignal) {
-		return null;
+	public Double toAmp(double[] preFFT) {
+		return Util.average(preFFT);
+	}
+	
+	public void queues() {
+		//TODO maybe initialize with rough final size;
+    	Util.timeDiff("QUEUES");
+    	FFT fftInstance = FFT.getInstance(data.getFftLength());
+    	
+    	IOQueue<double[], Double> toAmp = new IOQueue<double[], Double>(32) {
+			@Override
+			protected Double process(double[] preFFT) {
+				//System.out.println("toAmp " + Thread.currentThread().getId());
+				return toAmp(preFFT);
+			}
+		};
+		toAmp.start();
+		
+    	IOQueue<Complex[], double[]> toFft = new IOQueue<Complex[], double[]>(32) {
+			@Override
+			protected double[] process(Complex[] preFFT) {
+				//System.out.println("computeFFT " + Thread.currentThread().getId());
+				return computeFFT(preFFT, fftInstance);
+			}
+		};
+		toFft.start();
+		
+		//System.out.println("before computeComplexAndOverlap3");
+		computeComplexAndOverlap3(true, toAmp, toFft);
+		//Finished adding to queues.
+		toAmp.signalFinished();
+		toFft.signalFinished();
+		
+		
+		try {
+			//Wait for the queues to be processed
+			//System.out.println("before amp join");
+			toAmp.join();
+			//System.out.println("before toFft join");
+			toFft.join();
+			//System.out.println("after toFft join");
+			Util.verify(toAmp.isFinished(), ProcessSignal.this + " toAmp is not finished?");
+			Util.verify(toFft.isFinished(), ProcessSignal.this + " toFft is not finished?");
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		Util.timeDiff("Copying");
+		data.setAmp(toAmp.processedList().toArray(new Double[toAmp.maxSize()]));
+		List<Double> absolutes = new ArrayList<Double>(toAmp.maxSize() * data.getFftLength());
+		for(double[] dArray : toFft.processedList()) {
+			for(double d : dArray) {
+				absolutes.add(d);
+			}
+		}
+		data.setFftAbsolute(absolutes);
+		//data.setAbsolute(toFft.processedList());
+		Util.timeDiff("Copying");
+		
+		Util.timeDiff("QUEUES");
+	}
+	
+	public void oldPath() {
+    	Util.timeDiff("oldpath");  	
+    	
+//    	Util.timeDiff("OVERLAP");
+    	computeComplexAndOverlap2(true);
+    	data.clearOriginalSignal(); // Last time we're using it. Save memory.
+//    	Util.timeDiff("OVERLAP");
+
+    	
+    	
+//    	Util.timeDiff("FFTS");
+    	computeFFtsAndFilter();
+    	data.setComplexData(null); // Last time we're using it. Save memory.
+ //   	Util.timeDiff("FFTS");
+    	
+    	
+//    	Util.timeDiff("AMP");
+    	OnsetDetection.computeAmp(data);
+    	data.setOverlappedData(null); // Last time we're using it. Save memory.
+//    	Util.timeDiff("AMP");
+    	Util.timeDiff("oldpath");
 	}
     
     public void process() {
@@ -62,29 +150,11 @@ public class ProcessSignal {
     	List<Integer> signal = Arrays.asList(data.getOriginalSignal());
     	*/
     	
-    	IOQueue<List<Double>, Double> toAmp;
-    	toAmp = new IOQueue<List<Double>, Double>(4) {
-			@Override
-			protected Double process(List<Double> subSignal) {
-				return toAmp(subSignal);
-			}
-		};
+    	queues();
+    	//oldPath();
     	
-
+    	//System.out.println("begin");
     	
-    	
-    	Util.timeDiff("OVERLAP");
-    	computeComplexAndOverlap2(true/*doHann*/);
-    	data.clearOriginalSignal(); // Last time we're using it. Save memory.
-    	Util.timeDiff("OVERLAP");
-    	
-    	
-    	Util.timeDiff("FFTS");
-    	computeFFtsAndFilter();
-    	data.setComplexData(null); // Last time we're using it. Save memory.
-    	Util.timeDiff("FFTS");
-    	
-
     	/*
     	computeAutoCorrelation();
     	computeFrequenciesFromAutocorrelation();
@@ -98,12 +168,9 @@ public class ProcessSignal {
     		i+= data.getFftLength();
     	}
     	data.setFftLowPassAbsolute(fftAbsolute.toArray(new Double[fftAbsolute.size()]));*/
-    	
-    	
-    	Util.timeDiff("AMP");
-    	OnsetDetection.computeAmp(data);
-    	data.setOverlappedData(null); // Last time we're using it. Save memory.
-    	Util.timeDiff("AMP");
+    	  	
+ 	
+
 if(false) {    	
     	FundamentalFrequency ff = new FundamentalFrequency(data, 
     			/*Arrays.asList(data.getFftLowPassAbsolute())*/
@@ -868,30 +935,60 @@ if(false) {
 		return (int) mode;
 	}
 	
-	private void computeComplexAndOverlap3(boolean doHann, ProcessQueue<Double, Double> toAmps,
-			ProcessQueue<Complex, Double> toComplex) {
+	private double convert(int[] signal, int sIndex, Double[] weights, int wIndex, int sLength) {
+/*		long threadId = Thread.currentThread().getId();
+        System.out.println("Thread # " + threadId + " is doing this task");*/
+		if(sIndex < sLength)
+			if(weights != null) {
+				return  weights[wIndex] * signal[sIndex];
+			}
+			else {
+				return signal[sIndex];
+			}
+		return 0;
+	}
+	
+/*	private void enqueue(double value, IOQueue<List<Double>,Double> toAmp,
+			IOQueue<List<Complex>, List<Double>> toComplex) {
+		toAmp.add(value);
+		to
+	}*/
+	
+	private void computeComplexAndOverlap3(boolean doHann, IOQueue<double[],Double> toAmp,
+			IOQueue<Complex[], double[]> toComplex) {
 		int fftLength = data.getFftLength();
 		double overlapPercentage = data.getOverlapPercentage();
 		int[] signal = data.getOriginalSignal();
 		int increment = (int) (fftLength * overlapPercentage);
 		//Rough estimate of new size.
-		List<Complex> complexData = new ArrayList<Complex>((int) ((1/overlapPercentage) * signal.length));
-		List<Double> overlapedData = new ArrayList<Double>();
+		//List<Complex> complexData = new ArrayList<Complex>((int) ((1/overlapPercentage) * signal.length));
+		//List<Double> overlapedData = new ArrayList<Double>();
 		
-		Double[] weights = null;
-		if(doHann) {
-			weights = getHannWeights(fftLength);
+		final Double[] weights = (doHann)? getHannWeights(fftLength) : null;
+		if(weights != null) {
 			data.setDataHanned();
 		}
 		data.setDataWindowed();
 		double value;
 		
-		//int windowIndex = 0;
 		//http://dsp.stackexchange.com/questions/15563/what-exactly-is-the-effect-of-a-hann-window-on-the-fft-output
+		
 		for(int i = 0; i <= signal.length - increment; i+= increment) {
 			// System.out.println(i + " " + signal.length);
 			int hanIndex = 0;
+			double[] abs = new double[fftLength];
+			Complex[] complex = new Complex[fftLength];
+			
 			for(int j = i; j < i + fftLength; j++) {
+/*				
+				try {
+					Thread.sleep(1);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				*/
+				
 				// System.out.println(j);
 				//System.out.println("w: " + windowIndex + " j:" + j);
 				if(j < signal.length)
@@ -904,19 +1001,56 @@ if(false) {
 				else
 					value = 0;
 				
-				overlapedData.add(Math.abs(value));
-				complexData.add(new Complex(value));
-				
-				//windowIndex++;
+				abs[hanIndex] = Math.abs(value);
+				complex[hanIndex] = new Complex(value);
 				hanIndex++;
 			}
+			toAmp.add(abs);
+			toComplex.add(complex);
+			
+			//Util.totalTimeDiff("wostreams");
+			
+			
+			
+			
+/*			
+			Util.totalTimeDiff("streams");
+			final int base = i;
+			List<Double> preFFt2 = IntStream.range(i, i + fftLength).parallel()
+					.mapToDouble(v -> convert(signal, v, weights, v - base, signal.length))
+					.boxed().collect(Collectors.toList());
+			
+			// mapToDouble(d -> Math.abs(d)).boxed()
+			//System.out.println(preFFt2.parallelStream().isParallel() + " is parallel");
+			List<Double> abs2 = preFFt2.parallelStream().map(Math::abs).collect(Collectors.toList());
+			toAmp.add(abs2);
+			List<Complex> complex2 =  preFFt2.parallelStream().map(Complex::new).collect(Collectors.toList());
+			//toComplex.add(complex2);
+			Util.totalTimeDiff("streams");
+*/
+			
+			/*IntStream.range(0, list.size())
+				.flatMap(i -> DoubleStream.of(t))
+			
+	        	.filter(i -> names[i].length() <= i)
+	         .mapToObj(i -> names[i])
+	         .collect(Collectors.toList());*/
+			
+			/*			OfInt spliterator = Arrays.spliterator(signal, i, i + fftLength);
+			OfInt sp2 = spliterator.trySplit();
+			
+			OfInt sp3 = spliterator.trySplit();*/
 		}
-		Util.timeDiff("overlapArray");
+		//Util.totalTime("streams");
+		//Util.totalTime("wostreams");
+		
+		
+		/*Util.timeDiff("overlapArray");
 		data.setOverlappedData(Arrays.asList(overlapedData.toArray(new Double[overlapedData.size()])));
 		Util.timeDiff("overlapArray");
 		Util.timeDiff("complexArray");
 		data.setComplexData(complexData.toArray(new Complex[complexData.size()]));
-		Util.timeDiff("complexArray");
+		Util.timeDiff("complexArray");*/
 
 	}
 	
@@ -1086,6 +1220,30 @@ if(false) {
 		
 		fftAbsolute.add(d);
 	}
+
+	//TODO ensure complexData is divisible by the fftLength");
+	private double[] computeFFT(Complex[] complexData, FFT fftInstance) {
+		// FFT.setNumBits(origFFTLength);
+		int fftLen = complexData.length;
+		double[] fftAbsolute = new double[fftLen];
+		
+		// I shouldn't have to copy complexData we are throwing it away right after this anyways.
+		//Util.verify(complexData instanceof JArray, "1. You didn't pass me an efficient array");
+		//Util.verify(complexData instanceof JArray<?>, "2. You didn't pass me an efficient array");
+		Util.totalTimeDiff("FORWARD");
+		// This should be the original backing array.
+		Complex[] toFft = complexData;
+		fftInstance.fft(toFft);
+		Util.totalTimeDiff("FORWARD");
+		
+		
+		Util.totalTimeDiff("ABSOLUTE");
+		for(int j = 0; j < toFft.length; j++) {
+			fftAbsolute[j] = toFft[j].absolute();
+		}
+		Util.totalTimeDiff("ABSOLUTE");
+		return fftAbsolute;
+	}	
 	
 	//TODO ensure complexData is divisible by the fftLength");
 	private void computeFFtsAndFilter() {

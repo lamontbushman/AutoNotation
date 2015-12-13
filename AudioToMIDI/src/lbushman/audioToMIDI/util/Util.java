@@ -196,7 +196,7 @@ public class Util {
     
     public static void verify(boolean passed, String str) {
     	if(!passed) {
-    		System.err.println(str);
+    		System.err.println("<<<" +str + ">>>");
     		System.err.flush();
     		if(verify) {
     			System.out.println("Hitting the breakpoint");
@@ -266,6 +266,14 @@ public class Util {
     		total += n;
     	}
     	return total / modes.size();
+    }
+    
+    public static double average(double[] values) {
+    	double total = 0;
+    	for(double n : values) {
+    		total += n;
+    	}
+    	return total / values.length;
     }
     
     public static int round(double number) {

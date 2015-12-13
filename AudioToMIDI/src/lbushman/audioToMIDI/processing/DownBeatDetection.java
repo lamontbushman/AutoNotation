@@ -2,6 +2,7 @@ package lbushman.audioToMIDI.processing;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.TreeSet;
@@ -89,7 +90,7 @@ public class DownBeatDetection {
 				break; 
 			}
 		}
-		Util.verify(bestCandidate != -1, "calculateNoteDuration() unexpected state,");
+		Util.verify(bestCandidate != -1, "calculateNoteDuration() unexpected state.");
 		lastNoteError = leastError;
 		return bestCandidate;
 	}
@@ -182,6 +183,7 @@ public class DownBeatDetection {
 			int currAvgBeatLen = (int) Math.round(diffBetweenBeats / (double) nBeats);
 			
 			List<Double> lengths = new ArrayList<Double>();
+			List<Double> actualLengths = new ArrayList<Double>();
 			Integer previous = null;
 			double durationSum = 0;
 			for(Integer onset : oneBeatsOnsetsSet) {
@@ -189,6 +191,7 @@ public class DownBeatDetection {
 					int length = onset - previous;
 					//  i. Divide
 					// ii. "Round" to the nearest stored fraction.
+					actualLengths.add(length / (double)currAvgBeatLen);
 					double duration = calculateNoteDuration(length, currAvgBeatLen);
 					lengths.add(duration);
 					durationSum += duration;
@@ -206,7 +209,60 @@ public class DownBeatDetection {
 			//					a. Fudge the numbers maybe (test later). or test to see if this is reasonable.
 			//						i. Add breakpoint/assert in case
 			if(durationSum != nBeats) {
-				System.out.println("Error: Notes don't add to: " + nBeats + " sum: " + durationSum);
+				System.out.println("(obo1: " + onBeatOnset1 + " obo2: " + "Error: Notes don't add to: " + nBeats + " sum: " + durationSum);
+				// Assuming that beat detection was correct.
+	
+ 				LinkedList<Integer> toPermute = new LinkedList<Integer>();
+				for(int i = 0; i < possibleNoteLengths.length; i++) {
+					toPermute.add(i);
+				}
+				// I know it is not permutations, but that was what I was thinking I needed at first.
+				List<List<Integer>> permutedList = permute(toPermute, lengths.size());
+				double smallestError = Double.MAX_VALUE;
+				int sei = -1;
+				for(int pli = 0; pli < permutedList.size(); pli++) {
+					List<Integer> list = permutedList.get(pli);
+					double error = 0;
+					double sum = 0;
+					for(int noteIndex = 0; noteIndex < list.size(); noteIndex++) {
+						Double al = actualLengths.get(noteIndex);
+						Double pnl =  possibleNoteLengths[list.get(noteIndex)];
+						error += Math.abs(al - pnl) / al;
+						sum += pnl;
+					}
+					if(sum == nBeats) {
+						if(error < smallestError) {
+							smallestError = error;
+							sei = pli;
+						} else if(error == smallestError) {
+							System.err.println("(obo1: " + onBeatOnset1 + " obo2: " + onBeatOnset2 + "): There was an equal permutation.");
+						}
+					}
+				}
+				
+				// TODO if error is too big, this might be a fermata.
+				
+				Util.verify(sei != -1, "(obo1: " + onBeatOnset1 + " obo2: " + onBeatOnset2 + "): No permutations add up to " + nBeats);
+				lengths.clear();
+				for(Integer pnli : permutedList.get(sei)) {
+					lengths.add(possibleNoteLengths[pnli]);
+				}
+				
+				
+				
+/*				
+				int end = lengths.size();
+				List<Double> notes = new ArrayList<Double>(lengths.subList(end - nBeats, end));
+				List<Double> errors = new ArrayList<Double>(notes.size());
+				double sum = 0;
+				for(double note : actualLengths) {
+					for(double pnl : possibleNoteLengths) {
+						double error = Math.abs(note - pnl) / note;
+					}
+				}*/
+				
+				
+				
 			}
 			// iv. Add lengths to noteDurations
 			noteDurations.addAll(lengths);	
@@ -222,7 +278,7 @@ public class DownBeatDetection {
 			System.out.println("Implement this just like step 2 (calculating lengths before)");
 		}
 		
-		//7. Calculate length of last onset? based on loudness?
+		//7. Calculate length of last offset? based on loudness?
 		//		-- then later when doing measures. Adjust this value. (Need to factor in the first measure to find the last measure length)
 		
 		//8. Based on steps 6 and 7 calculate the tail end
@@ -314,6 +370,31 @@ public class DownBeatDetection {
 			while(on)
 		}*/
 		
+	}
+	
+	public static List<List<Integer>> permute(List<Integer> permute, int numChoose) {
+		Util.verify(numChoose <= permute.size(), "Can't do a " + permute.size() + "c" + numChoose);
+		//count = 0;
+		List<List<Integer>> permutations = new LinkedList<List<Integer>>();
+		permute(permute, new LinkedList<Integer>(), numChoose, permutations);
+		//System.out.println(count);
+		return permutations;
+	}
+	
+//	static int count = 0;
+	public static void permute(List<Integer> permute, List<Integer> permuted, int numChoose, List<List<Integer>> permutations) {
+		if(permuted.size() == numChoose) {
+			System.out.println(permuted);
+			permutations.add(permuted);
+		} else for(Integer item : permute) {
+//			count++;
+			/*
+			List<Integer> subPermute = new LinkedList<Integer>(permute);
+			subPermute.remove(item);*/
+			List<Integer> subPermuted = new LinkedList<Integer>(permuted);
+			subPermuted.add(item);
+			permute(permute, subPermuted, numChoose, permutations);
+		}
 	}
 
 	public void detect() {

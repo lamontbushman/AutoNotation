@@ -36,7 +36,7 @@ public class FFT {
 		numBits = (int) (Math.log(n) / LOG2);
 		
 		if (Math.pow(2,numBits) != n) {
-			System.err.println("Length for DFT must be a power of 2.\n"
+			System.err.println("Length for DFT must be a power of 2. b\n"
 					+ "Length: " + n + " numBits: " + numBits);
 			System.exit(0);
 		}
@@ -51,7 +51,7 @@ public class FFT {
 numBits = (int) (Math.log(n) / LOG2);
 		
 		if (Math.pow(2,numBits) != n) {
-			System.err.println("Length for DFT must be a power of 2.\n"
+			System.err.println("Length for DFT must be a power of 2. c\n"
 					+ "Length: " + n + " numBits: " + numBits);
 			System.exit(0);
 		}
@@ -88,9 +88,9 @@ numBits = (int) (Math.log(n) / LOG2);
 		// precompute data for all ffts of given length 
 		
 		mNumBits = (int) (Math.log(length) / LOG2);
-		
-		if (Math.pow(2,numBits) != length) {
-			System.err.println("Length for DFT must be a power of 2.\n"
+		int computedLen = (int) Math.pow(2,mNumBits);
+		if (computedLen != length) {
+			System.err.println("Length for DFT must be a power of 2. a\n"
 					+ "Length: " + length + " mNumBits: " + mNumBits);
 			System.exit(0);
 		}

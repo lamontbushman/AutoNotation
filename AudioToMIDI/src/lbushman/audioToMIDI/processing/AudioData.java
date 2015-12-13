@@ -38,6 +38,7 @@ public class AudioData {
 	private List<Integer> trackedBeats;
 	private BeatDetection bt;
 	private List<Double> overlappedData;
+	private List<double[]> absolute;
 	
 	public AudioData(byte[] samples, AudioFormat audioFormat) {
 		format = audioFormat;
@@ -299,5 +300,13 @@ public class AudioData {
 
 	public List<Double> getOverlappedData() {
 		return overlappedData;
+	}
+
+	public void setAbsolute(List<double[]> fftAbsolute) {
+		this.absolute = fftAbsolute;
+	}
+
+	public List<double[]> getAbsolute() {
+		return absolute;
 	}
 }

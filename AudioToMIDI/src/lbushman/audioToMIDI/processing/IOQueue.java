@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import lbushman.audioToMIDI.util.Util;
+
 /*
  * INPUT - input type that is added to the input queue.
  * OUTPUT - output type that is added to the output queue
@@ -41,6 +43,10 @@ public abstract class IOQueue<INPUT,OUTPUT> extends Thread {
 		return false;
 	}
 	
+	public int maxSize() {
+		return index;
+	}
+	
 	public LinkedBlockingQueue<Element<OUTPUT>> subscribe() {
 		return outputQueue;
 	}
@@ -66,7 +72,7 @@ public abstract class IOQueue<INPUT,OUTPUT> extends Thread {
 		for(Thread t : threads) {
 			try {
 				t.join();
-				System.out.println("Thread finished: " + System.currentTimeMillis());
+				// System.out.println("Thread finished: " + System.currentTimeMillis());
 			} catch (InterruptedException e) {
 				System.err.println("Error on join.");
 				e.printStackTrace();
@@ -84,6 +90,8 @@ public abstract class IOQueue<INPUT,OUTPUT> extends Thread {
 			return null;
 		}
 		
+		Util.verify(outputQueue.size() == index, IOQueue.this + " output queue and input are not equal");
+		
 		List<OUTPUT> results = new ArrayList<OUTPUT>(outputQueue.size());
 		
 		//Initialize empty array for results
@@ -91,13 +99,11 @@ public abstract class IOQueue<INPUT,OUTPUT> extends Thread {
 			results.add(null);
 		
 		for(Element<OUTPUT> element : outputQueue) {
-			if(element == null) {
-				System.err.println("An element was null");
-			} else {
-				results.set(element.index, element.value);
-				//TODO find a better way to concatenate strings. Like PHP.
-				System.out.println("[" + element.index + "] " + element.value);
-			}
+			// Util.verify(element != null, IOQueue.this + " An element (index,value) is null.");
+			
+			results.set(element.index, element.value);
+			//TODO find a better way to concatenate strings. Like PHP.
+			//System.out.println("[" + element.index + "] " + element.value);
 		}
 		
 		return results;
