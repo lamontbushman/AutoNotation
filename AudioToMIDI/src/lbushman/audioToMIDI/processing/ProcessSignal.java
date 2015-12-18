@@ -31,7 +31,11 @@ import lbushman.audioToMIDI.util.JArray;
 import lbushman.audioToMIDI.util.Util;
 
 public class ProcessSignal {
-	private AudioData data;
+	private final AudioData data;
+	private final int wholeFinished; 
+	private final int overlapIncrement;
+	private final int fftLength;
+	private final int[] signal;
 	
 	public ProcessSignal(AudioData audioData, double overlapPercentage, int fftLength) {
 		data = audioData;
@@ -39,6 +43,17 @@ public class ProcessSignal {
 		data.setFftLength(fftLength);
 		double sampleRate = audioData.getFormat().getSampleRate();
 		int	numFFTsInOneSecond = (int) (((sampleRate / fftLength) / overlapPercentage)); //partial FFTs.
+		
+		
+		
+		// The number of indexes that have at least one index of an original FFT length.
+		
+		wholeFinished = (int) Math.floor(fftLength / overlapPercentage);
+		overlapIncrement  = (int) (fftLength * overlapPercentage);
+		this.fftLength = fftLength;
+		signal = data.getOriginalSignal();
+		
+		
 		// completeNumFFTsInOneSecond = numFFTsInOneSecond - 1/overlapPercentage;
 		// sR = 16384;
 		// fftLength = 2048
@@ -107,13 +122,16 @@ public class ProcessSignal {
 		}
 		Util.timeDiff("Copying");
 		data.setAmp(toAmp.processedList().toArray(new Double[toAmp.maxSize()]));
-		List<Double> absolutes = new ArrayList<Double>(toAmp.maxSize() * data.getFftLength());
+		toAmp = null;
+		List<Double> absolutes = new ArrayList<Double>(toFft.maxSize() * data.getFftLength());
 		for(double[] dArray : toFft.processedList()) {
 			for(double d : dArray) {
 				absolutes.add(d);
 			}
 		}
 		data.setFftAbsolute(absolutes);
+		toFft = null;
+		
 		//data.setAbsolute(toFft.processedList());
 		Util.timeDiff("Copying");
 		
@@ -953,6 +971,55 @@ if(false) {
 		toAmp.add(value);
 		to
 	}*/
+	
+	/**
+	 * Finds the original index of a signal based on the fftLength and the overlapPercentage.
+	 * Make sure returned value is within the range of the original signal before indexing into it.
+	 */
+	private int findOriginalIndex(int index) {		
+		// The index into an original FFT length sized portion
+		int baseIndex = index / wholeFinished;
+		baseIndex = baseIndex * fftLength;
+		
+		int remainder = index % wholeFinished;
+		
+		int overlapBase = remainder / fftLength;
+		overlapBase = overlapBase * overlapIncrement;
+		
+		int overlapIndex = remainder % fftLength;
+		
+		return baseIndex + overlapBase + overlapIndex;
+	}
+	
+	/**
+	 * Indexes are an index into overlapped data. i.e. The indexes pertaining to toAmp, or toComplex which
+	 * are passed to / added into by computeComplexAndOverlap3
+	 * @param overlapFromIndex inclusive
+	 * @param overlapToIndex exclusive
+	 */
+	public Double[] compute1FftOnOriginalSignal(int overlapFromIndex, int overlapToIndex) {
+		System.out.println(data.getOriginalSignal().length);
+		System.out.println(signal.length);
+		int fromIndex = findOriginalIndex(overlapFromIndex * fftLength);
+		int toIndex = findOriginalIndex(overlapToIndex * fftLength);
+		int newfftLength = toIndex - fromIndex;
+		// Am I sure that I want to do the ceiling. I think I want to do the floor.
+		newfftLength = Util.floorBase2(newfftLength);
+		System.out.println("[" + overlapFromIndex + " - " + overlapToIndex + "] + [" + fromIndex + " - " + toIndex + "], diff: " + (toIndex - fromIndex) + " fftLen: " + newfftLength);
+		FFT instance = FFT.getInstance(newfftLength);
+		Complex[] toFft = new Complex[newfftLength];
+		Double[] weightsThenData = getHannWeights(newfftLength);
+		int hannIndex = 0;
+		for(int i = fromIndex; i < fromIndex + newfftLength; i++) {
+			toFft[hannIndex] = new Complex(weightsThenData[hannIndex] * signal[i]);
+			hannIndex++;
+		}
+		instance.fft(toFft);
+		for(int i = 0; i < newfftLength; i++) {
+			weightsThenData[i] = toFft[i].absolute();
+		}
+		return weightsThenData;
+	}
 	
 	private void computeComplexAndOverlap3(boolean doHann, IOQueue<double[],Double> toAmp,
 			IOQueue<Complex[], double[]> toComplex) {

@@ -42,6 +42,7 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 
 public class Main extends Application {
+	ProcessSignal ps;
 	CaptureAudio audio;
     Button captureButton;
     Button openButton;
@@ -100,7 +101,7 @@ public class Main extends Application {
 		}
 		Util.println("Reset2");
 		Util.timeDiff("PS");
-		ProcessSignal ps = new ProcessSignal(audioData, 
+		ps = new ProcessSignal(audioData, 
 				/*0.120*/ /*0.25*/ 0.25 /*0.125 *//*overlap of FFTs*/, 2048 /*original fftLength */); //8192
 
 		
@@ -175,11 +176,14 @@ if(false) {
     }
     
     private <T> void updateGraph(Graph graph, List<T> dataList, int index) {
-    	Number[] data = dataList.toArray(new Number[dataList.size()]);
-    	
     	int start = index * audioData.getFftLength();
     	int end = start + audioData.getFftLength();
-    	Number[] range = Arrays.copyOfRange(data, start, end);
+    	List<T> subList = dataList.subList(start, end);
+    	Number[] range = subList.toArray(new Number[dataList.size()]);
+    	
+    //	Number[] data = dataList.toArray(new Number[dataList.size()]);
+    
+    	//Number[] range = Arrays.copyOfRange(data, start, end);
     	
     	graph.updateList(range);
     }
@@ -428,7 +432,7 @@ if(false) {
 	    	int correlation = Util.maxIndex(correlations, 0, correlations.size());
 	    	int max = Util.maxIndex(halfFft, Math.max(0, correlation - 5), Math.min(halfFft.size() - 1, correlation + 5));
 	    	
-/*	    	RunningWindowStats rws = new RunningWindowStats(8);
+	    	RunningWindowStats rws = new RunningWindowStats(8);
 	    	for(int i = 0; i < correlations.size(); i++) {
 	    		double cor = correlations.get(i);
 	    		double mean = rws.mean();
@@ -438,8 +442,9 @@ if(false) {
 	    		}
 	    		rws.add(cor);
 	    	}
-	    	//max = Util.maxIndex(halfFft, Math.max(0, max - 5), Math.min(halfFft.size() - 1, max + 5));
-	    	*/
+	    	max = Util.maxIndex(halfFft, Math.max(0, max - 5), Math.min(halfFft.size() - 1, max + 5));
+//	    	max = Util.maxIndex(correlations, Math.max(0, max - 5), Math.min(correlations.size() - 1, max + 5));
+	    	
 	    	
 	    	int cor = -1;
 	    	Double sum  = Util.sum(correlations);
@@ -456,7 +461,7 @@ if(false) {
 	    	
 	    	corrValues.add(correlations.get(correlation));
 	    	double frequency = FundamentalFrequency.computeFrequency(max/*correlation*/, audioData);
-	    	frequency = FrequencyToNote.findFrequency(frequency);
+//	    	frequency = FrequencyToNote.findFrequency(frequency);
 	    	freqs.add(frequency);
 	    	if(time == 25 &&  frequency == 880) {
 	    		System.out.println("time: " + time);
@@ -554,6 +559,8 @@ if(false) {
     		i++;
     	}
     	
+    	
+    	
     	/*
 		RunningWindowStats rws = new RunningWindowStats(3);
 		List<Double> smoothedFreqs = new ArrayList<Double>();
@@ -578,8 +585,10 @@ if(false) {
     	Previous
     	[-0.0031216500447718747, 0.011708984175072401, 0.014185809666414742, 0.01631187482038257, 0.018672953800970615, 0.020502533689564135, 0.022042370851026408, 0.023920198033373558, 0.024362381329691117, 0.025133889869362575, 0.02897203428733229, 0.031468202575217534, 0.03174206666227823, 0.031788275104681726, 0.03254362039123506, 0.03289635209100222, 0.03300398354643061, 0.03306811998824443, 0.033088979988583594, 0.03421609226248243, 0.03471173741684021, 0.03494827866779151, 0.03549081349922573, 0.03560146807605591, 0.03562614400733803, 0.035885244116674986, 0.03649254893419563, 0.03663896862134829, 0.0368666553076343, 0.03767511986476015, 0.03789553025393591, 0.038084178547641595, 0.03826187011145257, 0.038294791031407635, 0.03845488396226728, 0.03927871880010179, 0.039456834910201154, 0.039671022810335604, 0.0400621956160165, 0.04011223687500827, 0.04011719339434992, 0.04108691441582478, 0.04240746112755935, 0.042707003742932154, 0.04283500001828877, 0.04290762036750395, 0.043460516789511155, 0.043743362128466357, 0.04376286870958954, 0.044783818867611645, 0.045729879234574, 0.04581761311069273, 0.04605529760110366, 0.046748054246655305, 0.04695902668230029, 0.047536200245742614, 0.04753649732524676, 0.04759330515922378, 0.04767657076782517, 0.048008320695765924, 0.0482799348660148, 0.048405542650331014, 0.048613972486595755, 0.049348545476377556, 0.05043273274311001, 0.05075435861902375, 0.050884537954736034, 0.05093007129911879, 0.051318637848776064, 0.05162828392261099, 0.051692420270454426, 0.0520038470633888, 0.05207193646420752, 0.052782888672860094, 0.05293968360929065, 0.053037915188431733, 0.05306023793389813, 0.053633635539373795, 0.053785315224804224, 0.054357196176888486, 0.0544718110562612, 0.054516014101579385, 0.0549438808651312, 0.05510576958104394, 0.05517381387494223, 0.05520396260099003, 0.055229601949643034, 0.05552984971498214, 0.05557827515771525, 0.05559656529701969, 0.05573817472263393, 0.056542512212475124, 0.05712675201040497, 0.057129812243012466, 0.057260291927543776, 0.057391771935585034, 0.05762441227732354, 0.057656681723718926, 0.05830651420807385, 0.05832651497700895, 0.05847409747059209, 0.05876083491776282, 0.05913788478239463, 0.06043669507908729, 0.0610006700448217, 0.062493867242743896, 0.06368594189162534, 0.06421148713859601, 0.06434269433991802, 0.06529461959638169, 0.06892129247101039, 0.06895780231864514, 0.07062812627214542, 0.07084327132307124, 0.07179288059058102, 0.07384647475455386]
 
-*/    	
+*/
     	
+//ONSETS   	
+    	ArrayList<Integer> offsets = new ArrayList<Integer>();
     	ArrayList<Integer> onsets = new ArrayList<Integer>();
     	boolean atBase = false;
     	boolean atPeak = false;
@@ -595,7 +604,7 @@ if(false) {
     	List<Double> values = new ArrayList<Double>();
     	double topAmpV = 0;
     	int topAmpI = 0;
-    	
+   	
     	List<Double> ampsList = Arrays.asList(audioData.getAmp());
     	for(int i = 0; i < corrValuesPerc.size(); i++) {
     		double perc = corrValuesPerc.get(i);
@@ -603,6 +612,7 @@ if(false) {
     		// Found bottom
     		if(perc < /*0.017*/0.018 ) { //(absolute min (0.009 0.008 too low)  .018 getting a little scary to be cutting into a peak.  At one point gives 2 .017 - 0.020 a decent number for matching amp peak.
     			if(atBase == false) {
+    				offsets.add(i);
     //onsets.add(topI);
 //onsets.add(leastI);
 	//onsets.add(i); // beginning of peak
@@ -937,6 +947,10 @@ if(false) {
     	// 4 and 8 doesn't divide 7-1 or 11-1 or 15-1 but 2 does divide 6, 10, and 14
     	//
  }  	
+
+//EASY FREQS
+
+/*
 		int c=0;
 		for(int i = 0; i < audioData.getFftAbsolute().size(); i+= fftLen ) {
 			int beg = i;
@@ -947,22 +961,75 @@ if(false) {
 			c++;
 		}
 			
-
-
+*/
+//NOTES
+Note[] actualNotes = {new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('A',null,4),new Note('B',false,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('A',null,4),new Note('B',false,4)};
+Double[] song2 = {1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.5,0.5,3.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,1.5,0.5,0.5,0.5,0.5,0.5,1.0,1.0,1.0,1.0,2.0,1.0,1.0,3.0};
+		
+System.out.println(audioData.getNumFFT());
+System.out.println(audioData.getFftAbsolute().size());
+		List<Note> notes = new ArrayList<Note>();
+		ListIterator<Integer> offsetIter = offsets.listIterator();
+		Integer offset = 0;
+		Double[] oneFft = null;
+		for(int i = 0; i < onsets.size(); i++) {
+			Integer onset = onsets.get(i);
+			// TODO ensure that offset is not greater than the next onset
+			while(offsetIter.hasNext() && (offset = offsets.get(offsetIter.nextIndex())) < onset) {
+				offsetIter.next();
+			}
+			
+			if(i + 1 < onsets.size() && offset > onsets.get(i +1)) {
+				Util.verify(false, "Probably matching onsets to offsets is off.");
+			}
+			
+			if(i == 0)
+				oneFft = ps.compute1FftOnOriginalSignal(onset, offset + 1);
+			
+			List<Double> modes = Util.mode(freqs.subList(onset, offset));
+			double freq = modes.get(0);
+			Note note = FrequencyToNote.findNote(freq);
+			notes.add(note);
+			if(modes.size() != 1) {
+				System.out.println(i + " Too many frequency modes onset: " + onset + " offset: " + offset + "should: " + actualNotes[i] +  " modes: " + modes + " freqs: " + freqs.subList(onset, offset));
+			} else if (actualNotes[i].equals(note)) {
+				System.out.println(i + " Good onset: " + onset + " offset: " + offset + "is: " + actualNotes[i] + " freqs: " + freqs.subList(onset, offset));
+			} else {
+				System.out.println(i + " Bad onset: " + onset + " offset: " + offset + "is: " + actualNotes[i] + " freqs: " + freqs.subList(onset, offset));
+			}
+		}
+		
+		for(int i = 0; i < 300; i++) {
+			double freq = FundamentalFrequency.computeFrequency(i, audioData);
+			System.out.println(i + " freq: " + freq + " note: " + FrequencyToNote.findNote(freq) + " " + FrequencyToNote.findFrequency(freq));
+		}
+		
+		
+				
+/*		
+		List<Note> notes = new ArrayList<Note>();
 		Util.verify(!onsets.isEmpty(), "Onsets are empty");
 		Integer prevOnset = onsets.get(0);
+		//System.out.print(" ");
 		for(int i = 1; i < onsets.size(); i++) {
 			Integer onset = onsets.get(i);
-			double l = data.noteDurations.get(i - 1);
-			List<Double> modes = Util.mode(freqs.subList(prevOnset, prevOnset + 10/*onset*/));
+			//double l = data.noteDurations.get(i - 1);
+			List<Double> modes = Util.mode(freqs.subList(prevOnset, prevOnset + 10));
 			//Util.verify(modes.size() == 1, "Too many frequencies between onset: " + prevOnset + " and " + onset);
 			double freq = modes.get(0);
 			Note note = FrequencyToNote.findNote(freq);
-			System.out.print(l + "" + note + " ");
+			notes.add(note);
 			
 			prevOnset = onset;
 		}
-    	
+*/
+		
+//    	System.out.println();
+
+		
+		Util.compareNotes(notes, Arrays.asList(actualNotes));
+		Util.equal(Arrays.asList(song2), data.noteDurations);
+		
     	//TODO get its own graph
 //		updateGraph(fftGraph, audioData.getFrequencies());
 Util.timeDiff("DF");
@@ -975,25 +1042,27 @@ Util.timeDiff("DF");
 		System.out.println();*/
 		
     	if(true) {
+    		updateGraph(fftGraph, oneFft);
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 70)));
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(freqs/*audioData.getNormalizedFrequencies()*/, 0.01)));
-    											fftGraph.update3List(prepareValuesForDisplay(freqs, 4));
+    											//fftGraph.update3List(prepareValuesForDisplay(freqs, 4));
     												//fftGraph.update2List(prepareValuesForDisplay(onsetAmps2/*freqs*/, 5));
     		//fftGraph.update3List(prepareValuesForDisplay(Arrays.asList(smoothedFreqs),20));
     		
-    											//fftGraph.updateList(prepareValuesForDisplay(notesOnBeatD, 27));
-		    									fftGraph.update2List(preparePositionsForDisplay(onsets, 4050/*25000*/));
+    									//		fftGraph.updateList(prepareValuesForDisplay(notesOnBeatD, 27));
+												//fftGraph.updateList(preparePositionsForDisplay(offsets, 4050/*25000*/));
+		    									//fftGraph.update2List(preparePositionsForDisplay(onsets, 4050/*25000*/));
 //		    		fftGraph.update3List(preparePositionsForDisplay(trackedBeats, 5000));
     		//fftGraph.update3List(preparePositionsForDisplay(onsets, 19000));
-//		    									fftGraph.updateList(prepareValuesForDisplay(corrValuesPerc, 55000));
-		    									fftGraph.updateList(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 1));
+//		    									fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 55000));
+//		    									fftGraph.updateList(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 1));
 		    		//fftGraph.update3List(prepareValuesForDisplay(onsetAmps2, 4));
       		
     	//	updateGraph(fftGraph, Arrays.asList(preparePositionsForDisplay(rollOnsets, 19000)));
    // 		updateGraph(fftGraph, Arrays.asList(preparePositionsForDisplay(onsets, 19000)));
    // 		updateGraph(fftGraph, prepareValuesForDisplay(corrValues, 500));
 //			fftGraph.update2List(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 15));
-		    									//fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 150/*150000*/));
+		    								//	fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 150/*150000*/));
 			//fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 15000000));
     	} else {
     		fftGraph.clearData();
@@ -1243,12 +1312,16 @@ if(true) {
     
     private void displayFFt(int n, final List<Double> absoluteData) {
 		//updateGraph(fftGraph, Arrays.asList(absoluteData), n);
-    	updateGraph(fftGraph, absoluteData, n);
+    	fftGraph.clearData();
+    	fftGraph.clearData2();
+    	fftGraph.clearData3();
+    	int start = n * audioData.getFftLength();
+        int end = start + (audioData.getFftLength());
+    	updateGraph(fftGraph, absoluteData.subList(start, end));
     	
-		int start = n * audioData.getFftLength();
-    	int end = start + (audioData.getFftLength() / 2);
+
 /*    	List<Double> subList = Arrays.asList(absoluteData).subList(start, end);*/
-    	List<Double> subList = absoluteData.subList(start, end);
+    //	List<Double> subList = absoluteData.subList(start, end);
     	
     	
 /*		FundamentalFrequency ff = new FundamentalFrequency(audioData, subList);

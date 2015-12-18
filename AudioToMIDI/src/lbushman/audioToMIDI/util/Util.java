@@ -10,11 +10,24 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeSet;
 
+import lbushman.audioToMIDI.io.Note;
+
 
 public class Util {
+	public static final String ANSI_RESET = "\u001B[0m";
+	public static final String ANSI_BLACK = "\u001B[30m";
+	public static final String ANSI_RED = "\u001B[31m";
+	public static final String ANSI_GREEN = "\u001B[32m";
+	public static final String ANSI_YELLOW = "\u001B[33m";
+	public static final String ANSI_BLUE = "\u001B[34m";
+	public static final String ANSI_PURPLE = "\u001B[35m";
+	public static final String ANSI_CYAN = "\u001B[36m";
+	public static final String ANSI_WHITE = "\u001B[37m";
+	
 	private Util() {}
 
 	public static List<Integer> halfList(List<Integer> values) {
@@ -446,11 +459,11 @@ public class Util {
 		}
 	}
 	
-	public static void main(String args[]) {
+/*	public static void main(String args[]) {
 		System.out.println(gcdError(84,171,0));
 		System.out.println(0.5 % 0.3);
 		System.out.println(171 % 84);
-	}
+	}*/
 
 	public static List<Integer> findIntegersInSortedRange(List<Integer> ints, int lowerInc, int upperExc) {
 		List<Integer> foundInts = new LinkedList<Integer>();
@@ -503,5 +516,78 @@ public class Util {
 			currentTime = 0L;
 		}
 		System.out.println("TT: " + text + " " + currentTime);
+	}
+
+	public static void equal(List<Double> list1, List<Double> list2) {
+		int smallestSize = list1.size();
+		if(list1.size() != list2.size()) {
+			System.out.println("Lists are not the same size");
+			if(smallestSize > list2.size()) {
+				smallestSize = list2.size();
+			}
+		}
+		System.out.print("List differences: ");
+		for(int i = 0; i < smallestSize; i++) {
+			if(list1.get(i).compareTo(list2.get(i)) != 0) {
+				System.out.print("(" + i + "):[" + list1.get(i) + "," + list2.get(i) + "]");
+			}
+		}
+		System.out.println();
+	}
+
+	public static void compareNotes(List<Note> list1, List<Note> list2) {
+		int size1 = list1.size();
+		int size2 = list2.size();
+		if(size1 != size2) {
+			System.out.println("Lists are not the same size");
+		}
+		int largest = (size1 > size2)? size1 : size2;
+		for(int i = 0; i < largest; i++) {
+			if( i >= size1 || i>= size2 || !list1.get(i).equals(list2.get(i))) {
+				System.out.format("%4d ", i);
+			} else {
+				System.out.print("     ");
+			}
+		}		
+		System.out.println();
+		for(int i = 0; i < size1; i++) {
+			if(i < size2 && list1.get(i).equals(list2.get(i))) {
+				System.out.print(" " + list1.get(i) + " ");
+			} else {
+				System.out.print(/*ANSI_CYAN + */" " + list1.get(i) + /*ANSI_RESET + */" ");
+			}
+		}
+		System.out.println();
+		for(int i = 0; i < size2; i++) {
+			System.out.print(" " + list2.get(i) + " ");
+/*			if(i < size2 && list1.get(i).equals(list2.get(i))) {
+				System.out.print(list2.get(i));
+			} else {
+				System.out.print(ANSI_CYAN + " " + list2.get(i) + " " + ANSI_RESET);
+			}*/
+		}
+		System.out.println();
+	}
+	
+	public static int floorBase2(int number) {
+		int ceil = ceilBase2(number);
+		return (ceil == number)? ceil : ceil / 2;
+	}
+
+	public static int ceilBase2(int number) {
+		int ceil = 1;
+		while(ceil < number) {
+			ceil *= 2;
+		}
+		return ceil;
+	}
+	
+	public static void main(String args[]) {
+		Scanner in = new Scanner(System.in);
+		int num;
+		while((num = in.nextInt()) != -1) {
+			System.out.println(Util.ceilBase2(num));
+		}
+		in.close();
 	}
 }

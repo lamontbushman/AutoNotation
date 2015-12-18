@@ -58,6 +58,13 @@ public class Note {
 		return toString(true);
 	}
 	
+	public boolean equals(Note note) {
+		return sharpFlatNull == note.sharpFlatNull &&
+				position == note.position &&
+				name == note.name;
+		
+	}
+	
 	public String toString(boolean displayAccidental) {
 		if(name == null) {
 			return "Out of range";
