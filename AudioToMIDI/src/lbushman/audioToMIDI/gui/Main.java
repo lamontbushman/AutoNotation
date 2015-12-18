@@ -371,6 +371,7 @@ if(false) {
     }
     
     private String getFreqAndNote(int index) {
+  //  	double frequency = FundamentalFrequency.computeFrequency(index, audioData.getFormat().getSampleRate(), 4096);
     	double frequency = FundamentalFrequency.computeFrequency(index, audioData);
     	String closestNote = FrequencyToNote.findNote(frequency).toString();
     	return frequency + "Hz " + closestNote;
@@ -969,9 +970,15 @@ Double[] song2 = {1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.
 System.out.println(audioData.getNumFFT());
 System.out.println(audioData.getFftAbsolute().size());
 		List<Note> notes = new ArrayList<Note>();
+		List<Note> fundamentalNotes = new ArrayList<Note>();
 		ListIterator<Integer> offsetIter = offsets.listIterator();
 		Integer offset = 0;
 		Double[] oneFft = null;
+		List<Note> originalFrequencies = new ArrayList<Note>();
+		List<Note> correlatedNotes = new ArrayList<Note>();
+		List<Integer> frequencyOnsets = new ArrayList<Integer>();
+		List<Note> onsetNotes = new ArrayList<Note>(); 
+		List<Integer> fixedFundamentals = new ArrayList<Integer>();
 		for(int i = 0; i < onsets.size(); i++) {
 			Integer onset = onsets.get(i);
 			// TODO ensure that offset is not greater than the next onset
@@ -983,8 +990,91 @@ System.out.println(audioData.getFftAbsolute().size());
 				Util.verify(false, "Probably matching onsets to offsets is off.");
 			}
 			
-			if(i == 0)
+			if(i == 22/* && i == 21 && i == 51*/)
 				oneFft = ps.compute1FftOnOriginalSignal(onset, offset + 1);
+			originalFrequencies.add(FrequencyToNote.findNote(ps.calculateFrequencyFromOriginalSignal(onset, onset + 9/*(onset + ((offset - onset)/2)) + 1)*/)));
+			
+			int maxCorr = Util.maxIndex(corrValuesPerc, onset, offset);
+			int freqOnset = Util.firstPeakAbove(corrValuesPerc, onset, offset, 0.025);
+			frequencyOnsets.add(freqOnset);
+			
+			int base = maxCorr * audioData.getFftLength();
+			int top = base + audioData.getFftLength() / 2;
+			List<Double> subList = audioData.getFftAbsolute().subList(base, top);
+			int maxI = Util.maxIndex(subList);
+			correlatedNotes.add(FrequencyToNote.findNote(FundamentalFrequency.computeFrequency(maxI, audioData)));
+			
+			base = freqOnset * audioData.getFftLength();
+			top = base + audioData.getFftLength() / 2;
+			subList = audioData.getFftAbsolute().subList(base, top);
+			maxI = Util.maxIndex(subList);
+			onsetNotes.add(FrequencyToNote.findNote(FundamentalFrequency.computeFrequency(maxI, audioData)));
+			
+			double maxValue = subList.get(maxI);
+			int searchLen = 1; // TODO LDB maybe increase this and else if value below
+			
+            6         8    9                       14                                 21                       26             29   30                       35                       40                                      48                  52                                                62        64   65   66             69                       74   75        77        79                  83        85   86                                 93   94             97                                104  105  106            109       111  112 
+F♮4  Bb4  C♮5  C♮5  Eb5  C♮5  Bb5  Bb4  A♮5  G♮5  F♮4  G♮4  F♮4  Eb4  D♮5  F♮4  Bb4  Eb5  C♮5  F♮4  G♮4  Eb6  Eb5  C♮5  Bb4  A♮4  Bb5  F♮4  Bb4  C♮6  C♮6  Eb5  C♮5  Bb4  Bb4  A♮5  G♮4  F♮4  G♮4  F♮4  Eb5  D♮4  F♮4  Bb4  Eb5  C♮5  F♮4  G♮4  Eb6  Eb5  C♮5  Bb4  A♮5  Bb4  F♮4  F♮4  D♮4  F♮4  F♮4  D♮4  F♮4  Bb4  D♮6  C♮5  Bb5  A♮5  G♮5  F♮4  G♮4  A♮5  F♮4  Bb4  C♮5  Eb5  G♮5  A♮5  Bb4  Eb6  D♮5  C♮6  C♮5  C♮5  Eb5  Bb5  C♮5  D♮6  G♮5  Eb5  D♮5  C♮5  Eb5  C♮5  Bb4  A♮5  G♮5  F♮4  G♮4  A♮5  F♮4  Bb4  C♮5  Eb5  C♮5  Bb4  A♮5  G♮5  Eb6  Eb5  C♮5  Bb5  A♮4  A♮5  Bb5 
+F♮4  Bb4  C♮5  C♮5  D♮5  C♮5  Bb4  Bb4  A♮4  G♮4  F♮4  G♮4  F♮4  Eb4  D♮4  F♮4  Bb4  D♮5  C♮5  F♮4  G♮4  Eb5  D♮5  C♮5  Bb4  A♮4  Bb4  F♮4  Bb4  C♮5  C♮5  D♮5  C♮5  Bb4  Bb4  A♮4  G♮4  F♮4  G♮4  F♮4  Eb4  D♮4  F♮4  Bb4  D♮5  C♮5  F♮4  G♮4  Eb5  D♮5  C♮5  Bb4  A♮4  Bb4  F♮4  F♮4  D♮4  F♮4  F♮4  D♮4  F♮4  Bb4  D♮5  C♮5  Bb4  A♮4  G♮4  F♮4  G♮4  A♮4  F♮4  Bb4  C♮5  D♮5  G♮4  A♮4  Bb4  Eb5  D♮5  C♮5  C♮5  C♮5  D♮5  Bb4  C♮5  D♮5  G♮4  Eb5  D♮5  C♮5  D♮5  C♮5  Bb4  A♮4  G♮4  F♮4  G♮4  A♮4  F♮4  Bb4  C♮5  D♮5  C♮5  Bb4  A♮4  G♮4  Eb5  D♮5  C♮5  Bb4  A♮4  A♮4  Bb4 
+numDifferent: 33
+fundamentalNotes
+                           9                                                          21                                                                                                                                                                                                           62                  66             69                       74             77                                      85   86                                                     97                                     105  106                      111      
+F♮4  Bb4  C♮5  C♮5  Eb5  C♮5  Bb4  Bb4  A♮4  G♮5  F♮4  G♮4  F♮4  Eb4  D♮4  F♮4  Bb4  Eb5  C♮5  F♮4  G♮4  Eb6  Eb5  C♮5  Bb4  A♮4  Bb4  F♮4  Bb4  C♮5  C♮5  Eb5  C♮5  Bb4  Bb4  A♮4  G♮4  F♮4  G♮4  F♮4  Eb4  D♮4  F♮4  Bb4  Eb5  C♮5  F♮4  G♮4  Eb5  Eb5  C♮5  Bb4  A♮4  Bb4  F♮4  F♮4  D♮4  F♮4  F♮4  D♮4  F♮4  Bb4  D♮6  C♮5  Bb4  A♮4  G♮5  F♮4  G♮4  A♮5  F♮4  Bb4  C♮5  Eb5  G♮5  A♮4  Bb4  Eb6  D♮5  C♮5  C♮5  C♮5  Eb5  Bb4  C♮5  D♮6  G♮5  Eb5  D♮5  C♮5  Eb5  C♮5  Bb4  A♮4  G♮4  F♮4  G♮4  A♮5  F♮4  Bb4  C♮5  Eb5  C♮5  Bb4  A♮4  G♮5  Eb6  Eb5  C♮5  Bb4  A♮4  A♮5  Bb4 
+F♮4  Bb4  C♮5  C♮5  D♮5  C♮5  Bb4  Bb4  A♮4  G♮4  F♮4  G♮4  F♮4  Eb4  D♮4  F♮4  Bb4  D♮5  C♮5  F♮4  G♮4  Eb5  D♮5  C♮5  Bb4  A♮4  Bb4  F♮4  Bb4  C♮5  C♮5  D♮5  C♮5  Bb4  Bb4  A♮4  G♮4  F♮4  G♮4  F♮4  Eb4  D♮4  F♮4  Bb4  D♮5  C♮5  F♮4  G♮4  Eb5  D♮5  C♮5  Bb4  A♮4  Bb4  F♮4  F♮4  D♮4  F♮4  F♮4  D♮4  F♮4  Bb4  D♮5  C♮5  Bb4  A♮4  G♮4  F♮4  G♮4  A♮4  F♮4  Bb4  C♮5  D♮5  G♮4  A♮4  Bb4  Eb5  D♮5  C♮5  C♮5  C♮5  D♮5  Bb4  C♮5  D♮5  G♮4  Eb5  D♮5  C♮5  D♮5  C♮5  Bb4  A♮4  G♮4  F♮4  G♮4  A♮4  F♮4  Bb4  C♮5  D♮5  C♮5  Bb4  A♮4  G♮4  Eb5  D♮5  C♮5  Bb4  A♮4  A♮4  Bb4 
+numDifferent: 13			
+			
+			int maxIhalf = (int) Math.round(maxI / 2.0); 
+			int maxIPhalf = maxI + maxIhalf;
+			boolean maxNotFundamental = false;
+			int peak1 = Util.maxIndex(subList, maxIhalf - searchLen, maxIhalf + searchLen + 1);
+			int peak3 = Util.maxIndex(subList, maxIPhalf - searchLen, maxIPhalf + searchLen + 1);
+			double posFundamentalValue  = subList.get(peak1),
+				   posFundamentalValue2 = subList.get(peak3);
+			if(posFundamentalValue / maxValue > 0.4)
+					maxNotFundamental = true;
+			else if(posFundamentalValue2 / maxValue > 0.11) // 1/11 LDB TODO maybe increase this and searchLen
+					maxNotFundamental = true;
+			
+			List<Integer> noteTrials = new ArrayList<Integer>();
+			int fundamentalI;
+			if(maxNotFundamental) {
+					fundamentalI = peak1;
+/*					
+					int peak4 = Util.maxIndex(subList, (maxIhalf * 4) - searchLen, (maxIhalf * 4) + searchLen + 1);
+					
+					noteTrials.add(peak1);
+					noteTrials.add(maxIhalf);
+					noteTrials.add((int) Math.round(peak3 / 3.0));
+					noteTrials.add((int) Math.round(peak4 / 4.0));
+					
+					//noteTrials = Util.mode(noteTrials);
+					if(noteTrials.size() != 1) {
+						System.out.println("multiple trials: " + i + " size: " + noteTrials.size());
+					} 
+
+					maxI = (int) Math.round(Util.average(noteTrials));
+					
+*/					// maxI = peak1;
+					fixedFundamentals.add(i);					
+					
+					//posFundamentalValue / 
+					//maxI = maxIhalf;
+			} else {
+				fundamentalI = maxI;
+			}
+			for(int j = 1; j <= 1; j++) {
+				int peak = Util.maxIndex(subList, (fundamentalI * j) - searchLen, (fundamentalI * j) + searchLen + 1);
+				noteTrials.add((int) Math.round(peak / (double) j));
+			}
+			noteTrials = Util.mode(noteTrials);
+//			if(noteTrials.size() != 1) {
+				System.out.println("multiple trials: " + i + " noteTrials: " + noteTrials);
+//			} 
+			fundamentalI = (int) Math.round(Util.average(noteTrials));
+			fundamentalNotes.add(FrequencyToNote.findNote(FundamentalFrequency.computeFrequency(fundamentalI, audioData)));
+			
+			
+			
 			
 			List<Double> modes = Util.mode(freqs.subList(onset, offset));
 			double freq = modes.get(0);
@@ -1004,6 +1094,7 @@ System.out.println(audioData.getFftAbsolute().size());
 			System.out.println(i + " freq: " + freq + " note: " + FrequencyToNote.findNote(freq) + " " + FrequencyToNote.findFrequency(freq));
 		}
 		
+		System.out.println("Original Frequencies: " + originalFrequencies);
 		
 				
 /*		
@@ -1029,7 +1120,13 @@ System.out.println(audioData.getFftAbsolute().size());
 		
 		Util.compareNotes(notes, Arrays.asList(actualNotes));
 		Util.equal(Arrays.asList(song2), data.noteDurations);
-		
+		Util.compareNotes(originalFrequencies, Arrays.asList(actualNotes));
+		Util.compareNotes(correlatedNotes, Arrays.asList(actualNotes));
+		Util.compareNotes(onsetNotes, Arrays.asList(actualNotes));
+		System.out.println("fundamentalNotes");
+		Util.compareNotes(fundamentalNotes, Arrays.asList(actualNotes));
+		System.out.println("actualNotes.length: " + actualNotes.length);
+		System.out.println(fixedFundamentals);
     	//TODO get its own graph
 //		updateGraph(fftGraph, audioData.getFrequencies());
 Util.timeDiff("DF");
@@ -1042,7 +1139,7 @@ Util.timeDiff("DF");
 		System.out.println();*/
 		
     	if(true) {
-    		updateGraph(fftGraph, oneFft);
+//    		updateGraph(fftGraph, oneFft);
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 70)));
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(freqs/*audioData.getNormalizedFrequencies()*/, 0.01)));
     											//fftGraph.update3List(prepareValuesForDisplay(freqs, 4));
@@ -1053,8 +1150,9 @@ Util.timeDiff("DF");
 												//fftGraph.updateList(preparePositionsForDisplay(offsets, 4050/*25000*/));
 		    									//fftGraph.update2List(preparePositionsForDisplay(onsets, 4050/*25000*/));
 //		    		fftGraph.update3List(preparePositionsForDisplay(trackedBeats, 5000));
-    		//fftGraph.update3List(preparePositionsForDisplay(onsets, 19000));
-//		    									fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 55000));
+    		fftGraph.update2List(preparePositionsForDisplay(onsets, 1));
+    		fftGraph.updateList(preparePositionsForDisplay(frequencyOnsets, 1));
+		    									fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 5));
 //		    									fftGraph.updateList(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 1));
 		    		//fftGraph.update3List(prepareValuesForDisplay(onsetAmps2, 4));
       		

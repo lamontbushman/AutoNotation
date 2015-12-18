@@ -991,6 +991,12 @@ if(false) {
 		return baseIndex + overlapBase + overlapIndex;
 	}
 	
+	public double calculateFrequencyFromOriginalSignal(int overlapFromIndex, int overlapToIndex) {
+		Double[] fft = compute1FftOnOriginalSignal(overlapFromIndex, overlapToIndex);
+		int bin =  Util.maxIndex(fft, 0, fft.length / 2);
+		return FundamentalFrequency.computeFrequency(bin, data.getFormat().getSampleRate(), fft.length);
+	};
+	
 	/**
 	 * Indexes are an index into overlapped data. i.e. The indexes pertaining to toAmp, or toComplex which
 	 * are passed to / added into by computeComplexAndOverlap3

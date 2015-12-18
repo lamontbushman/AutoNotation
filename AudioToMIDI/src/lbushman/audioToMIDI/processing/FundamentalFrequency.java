@@ -227,6 +227,10 @@ public class FundamentalFrequency extends Thread {
     	return bin * data.getFormat().getSampleRate() / data.getFftLength();
     }
     
+    public static double computeFrequency(int bin, double sampleRate, int fftLength) {
+    	return bin * sampleRate / fftLength;
+    }
+    
 	private static int findPeak(List<Double> signal, int currentIndex, int leftRight) {
 		//TODO possibly pass in the multiply of the window length
 		/*int searchLen = (int) (leftRight * 2);*/

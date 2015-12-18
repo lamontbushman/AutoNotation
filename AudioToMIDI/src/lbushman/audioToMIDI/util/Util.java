@@ -541,9 +541,11 @@ public class Util {
 		if(size1 != size2) {
 			System.out.println("Lists are not the same size");
 		}
+		int numDifferent = 0;
 		int largest = (size1 > size2)? size1 : size2;
 		for(int i = 0; i < largest; i++) {
 			if( i >= size1 || i>= size2 || !list1.get(i).equals(list2.get(i))) {
+				numDifferent++;
 				System.out.format("%4d ", i);
 			} else {
 				System.out.print("     ");
@@ -567,6 +569,7 @@ public class Util {
 			}*/
 		}
 		System.out.println();
+		System.out.println("numDifferent: " + numDifferent);
 	}
 	
 	public static int floorBase2(int number) {
@@ -589,5 +592,28 @@ public class Util {
 			System.out.println(Util.ceilBase2(num));
 		}
 		in.close();
+	}
+
+	public static int maxIndex(List<Double> list) {
+		return maxIndex(list, 0, list.size());
+	}
+
+	public static int firstPeakAbove(List<Double> values, int start, int noFurther, double value) {
+		boolean foundStartOfPeak = false;
+		double lastValue = 0;
+		double currValue = 0;
+		for(int i = start; i <= noFurther; i++) {
+			currValue = values.get(i);
+			if(foundStartOfPeak) {
+				if(currValue < lastValue) {
+					return i - 1;
+				}
+				lastValue = currValue;
+			} else if(currValue >= value) {
+				foundStartOfPeak = true;
+				lastValue = currValue;
+			}
+		}
+		return -1;
 	}
 }
