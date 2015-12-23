@@ -5,271 +5,87 @@ import lbushman.audioToMIDI.util.Util;
 
 
 public class FrequencyToNote {
-	private static int midiOffset = 12;
-	private static double[] frequencies = {
-			15.43,//Below range
-			16.35,17.32,18.35,19.45,20.6,21.83,23.12,24.5,25.96,27.5,29.14,
-			30.87,32.7,34.65,36.71,38.89,41.2,43.65,46.25,49,51.91,55,58.27,
-			61.74,65.41,69.3,73.42,77.78,82.41,87.31,92.5,98,103.83,110,116.54,
-			123.47,130.81,138.59,146.83,155.56,164.81,174.61,185,196,207.65,
-			220,233.08,246.94,261.63,277.18,293.66,311.13,329.63,349.23,369.99,
-			392,415.3,440,466.16,493.88,523.25,554.37,587.33,622.25,659.25,
-			698.46,739.99,783.99,830.61,880,932.33,987.77,1046.5,1108.73,
-			1174.66,1244.51,1318.51,1396.91,1479.98,1567.98,1661.22,1760,
-			1864.66,1975.53,2093,2217.46,2349.32,2489.02,2637.02,2793.83,
-			2959.96,3135.96,3322.44,3520,3729.31,3951.07,4186.01,4434.92,
-			4698.63,4978.03,5274.04,5587.65,5919.91,6271.93,6644.88,7040,
-			7458.62,7902.13,
-			8370.9 // Above range
-			};
-	private static String[] noteNames = {
-			"C","C#","D","Eb","E","F","F#","G","G#","A","Bb","B"};
+	private final static int midiOffset = 12;
+	// Equal temperament frequencies
+	private final static double[] frequencies = {
+		15.43,//Below range
+		16.35,17.32,18.35,19.45,20.6,21.83,23.12,24.5,25.96,27.5,29.14,
+		30.87,32.7,34.65,36.71,38.89,41.2,43.65,46.25,49,51.91,55,58.27,
+		61.74,65.41,69.3,73.42,77.78,82.41,87.31,92.5,98,103.83,110,116.54,
+		123.47,130.81,138.59,146.83,155.56,164.81,174.61,185,196,207.65,
+		220,233.08,246.94,261.63,277.18,293.66,311.13,329.63,349.23,369.99,
+		392,415.3,440,466.16,493.88,523.25,554.37,587.33,622.25,659.25,
+		698.46,739.99,783.99,830.61,880,932.33,987.77,1046.5,1108.73,
+		1174.66,1244.51,1318.51,1396.91,1479.98,1567.98,1661.22,1760,
+		1864.66,1975.53,2093,2217.46,2349.32,2489.02,2637.02,2793.83,
+		2959.96,3135.96,3322.44,3520,3729.31,3951.07,4186.01,4434.92,
+		4698.63,4978.03,5274.04,5587.65,5919.91,6271.93,6644.88,7040,
+		7458.62,7902.13,
+		8370.9 // Above range
+	};
+	private final static String[] noteNames = {
+			"C","C#","D","Eb","E","F","F#","G","G#","A","Bb","B"
+	};
+	/**
+	 * 	Index 0, ratio between a note and itself
+	 *  Index 1, ratio between a note and a half step above
+	 *  Index 2, whole step
+	 */
+	private final static double[] justScaleRatios = {
+		1.0, 25/24.0, 9/8.0, 6/5.0, 5/4.0, 4/3.0, 45/32.0, 3/2.0, 8/5.0, 5/3.0, 9/5.0, 15/8.0, 2.0
+	};
 	
-/*
-23.4375 F#0 
-31.25 B0 
-23.4375 F#0 
-39.0625 Eb1 39.0625 Eb1 
-195.3125 G3 
-
-		257.8125 C4 265.625 C4 265.625 C4 265.625 C4 265.625 C4 257.8125 C4 265.625 C4 265.625 C4 
-
-39.0625 Eb1 39.0625 Eb1 
-31.25 B0 
-
-
-		289.0625 D4 296.875 D4 296.875 D4 296.875 D4 296.875 D4 296.875 D4
-
-39.0625 Eb1 39.0625 Eb1 39.0625 Eb1 39.0625 Eb1 
-
-		328.125 E4 
-
-992.1875 B5 
-	
-		328.125 E4 328.125 E4 328.125 E4 328.125 E4 328.125 E4 328.125 E4 328.125 E4 328.125 E4
-
-664.0625 E5 // octave
-
-39.0625 Eb1 
-	
-		351.5625 F4 351.5625 F4 351.5625 F4 351.5625 F4 351.5625 F4 351.5625 F4
-
-31.25 B0 
-39.0625 Eb1 39.0625 Eb1 
-
-		351.5625 F4 351.5625 F4
-	 
-		390.625 G4 390.625 G4 390.625 G4 390.625 G4 390.625 G4 390.625 G4 390.625 G4 
-	
-265.625 C4 ?????????????????????
-
-125.0 B2 125.0 B2 
-
-1179.6875 D6 1187.5 D6 1187.5 D6 ?????????????????
-
-		437.5 A4 437.5 A4 445.3125 A4 437.5 A4 
-
-140.625 C#3 140.625 C#3 
-
-		437.5 A4 
-
-23.4375 F#0 
-		
-		437.5 A4 
-
-39.0625 Eb1 
-
-		882.8125 A5 
-
-31.25 B0 
-
-		492.1875 B4 
-
-2476.5625 Eb7 2476.5625 Eb7 
-
-1484.375 F#6 
-
-		500.0 B4 500.0 B4 500.0 B4 500.0 B4 492.1875 B4 492.1875 B4 492.1875 B4 492.1875 B4 492.1875 B4 492.1875 B4 
-		
-		515.625 C5 523.4375 C5 523.4375 C5 523.4375 C5 523.4375 C5 523.4375 C5 523.4375 C5 523.4375 C5 523.4375 C5 523.4375 C5 523.4375 C5 523.4375 C5
-		
-1765.625 A6 1765.625 A6 
-
-		585.9375 D5 585.9375 D5 585.9375 D5 585.9375 D5 585.9375 D5 593.75 D5 593.75 D5 593.75 D5 593.75 D5 
-		
-1976.5625 B6 1976.5625 B6 
-
-		656.25 E5 656.25 E5 656.25 E5 656.25 E5 664.0625 E5 
-
-15.625 Out of range 
-
-31.25 B0 
-
-39.0625 Eb1 39.0625 Eb1
-
-2125.0 C7 2117.1875 C7 
-
-		703.125 F5 703.125 F5 703.125 F5 703.125 F5 703.125 F5 703.125 F5 703.125 F5 703.125 F5 703.125 F5
-		
-		789.0625 G5 789.0625 G5 789.0625 G5 789.0625 G5 789.0625 G5 789.0625 G5 789.0625 G5 789.0625 G5 789.0625 G5 789.0625 G5 789.0625 G5
-		
-		882.8125 A5 882.8125 A5 882.8125 A5 882.8125 A5 882.8125 A5 882.8125 A5 882.8125 A5 882.8125 A5 882.8125 A5 882.8125 A5
-		
-		992.1875 B5 992.1875 B5 992.1875 B5 992.1875 B5 992.1875 B5 992.1875 B5 992.1875 B5 992.1875 B5 992.1875 B5 992.1875 B5 992.1875 B5
-		
-15.625 Out of range 
-
-23.4375 F#0 
-
-3148.4375 G7 
-
-		1046.875 C6 1039.0625 C6 1046.875 C6 1046.875 C6 1054.6875 C6 1054.6875 C6 1054.6875 C6 1046.875 C6 1046.875 C6 1046.875 C6 1046.875 C6 1046.875 C6 1046.875 C6 1046.875 C6 1046.875 C6 1054.6875 C6 1054.6875 C6 
-	
-187.5 F#3 
-
-31.25 B0 
-
-0.0 Out of range 
-
-31.25 B0 
-
-23.4375 F#0 
-
-31.25 B0 
- */
-	
-	
-	/*  
-C4 C4 C4 C4 C4 C4 C4 C4 
-D4 D4 D4 D4 D4 D4 
-Eb1 Eb1 Eb1 Eb1 
-E4 E4 E4 E4 E4 E4 E4 E4
-F4 F4 F4 F4 F4 F4
-G4 G4 G4 G4 G4 G4 G4
-A4 A4 A4 A4
-B4 B4 B4 B4 B4 B4 B4 B4 B4 B4
-C5 C5 C5 C5 C5 C5 C5 C5 C5 C5 C5 C5
-D5 D5 D5 D5 D5 D5 D5 D5 D5
-E5 E5 E5 E5 E5
-F5 F5 F5 F5 F5 F5 F5 F5 F5
-G5 G5 G5 G5 G5 G5 G5 G5 G5 G5 G5
-A5 A5 A5 A5 A5 A5 A5 A5 A5 A5
-B5 B5 B5 B5 B5 B5 B5 B5 B5 B5 B5
-C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6
-*/	
+	private final static double[] equalTemperamentScaleRatios = {
+		1.0000, 1.05946, 1.12246, 1.18921, 1.25992, 1.33483, 1.41421, 1.49831, 1.58740, 1.68179, 1.78180, 1.88775, 2.0000		
+	};
 	
 
-	/*  
-C4 C4 C4 C4 C4 C4 C4 C4 
-Eb1 Eb1 B0 
-D4 D4 D4 D4 D4 D4 
-Eb1 Eb1 Eb1 Eb1 
-E4 E4 E4 E4 E4 E4 E4 E4
-F4 F4 F4 F4 F4 F4
-G4 G4 G4 G4 G4 G4 G4
-D6 D6 D6
-A4 A4 A4 A4
-B4 B4 B4 B4 B4 B4 B4 B4 B4 B4
-C5 C5 C5 C5 C5 C5 C5 C5 C5 C5 C5 C5
-D5 D5 D5 D5 D5 D5 D5 D5 D5
-E5 E5 E5 E5 E5
-F5 F5 F5 F5 F5 F5 F5 F5 F5
-G5 G5 G5 G5 G5 G5 G5 G5 G5 G5 G5
-A5 A5 A5 A5 A5 A5 A5 A5 A5 A5
-B5 B5 B5 B5 B5 B5 B5 B5 B5 B5 B5
-C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6
-*/	
-
-	
-	/*
-Eb1 Eb1  
-C4 C4 C4 C4 C4 C4 C4 C4 
-Eb1 Eb1 B0 
-D4 D4 D4 D4 D4 D4 
-Eb1 Eb1 Eb1 Eb1 
-E4 E4 E4 E4 E4 E4 E4 E4
-F4 F4 F4 F4 F4 F4
-Eb1 Eb1
-F4 F4
-G4 G4 G4 G4 G4 G4 G4
-B2 B2
-D6 D6 D6
-A4 A4 A4 A4
-C#3 C#3
-Eb7 Eb7
-B4 B4 B4 B4 B4 B4 B4 B4 B4 B4
-C5 C5 C5 C5 C5 C5 C5 C5 C5 C5 C5 C5
-A6 A6
-D5 D5 D5 D5 D5 D5 D5 D5 D5
-B6 B6
-E5 E5 E5 E5 E5
-Eb1 Eb1
-C7 C7
-F5 F5 F5 F5 F5 F5 F5 F5 F5
-G5 G5 G5 G5 G5 G5 G5 G5 G5 G5 G5
-A5 A5 A5 A5 A5 A5 A5 A5 A5 A5
-B5 B5 B5 B5 B5 B5 B5 B5 B5 B5 B5
-C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6
-*/	
-	
-	
-	/*
-F#0 B0 F#0 Eb1 Eb1 
-G3 
-C4 C4 C4 C4 C4 C4 C4 C4 
-Eb1 Eb1 B0 
-D4 D4 D4 D4 D4 D4 
-Eb1 Eb1 Eb1 Eb1 
-E4 
-B5 
-E4 E4 E4 E4 E4 E4 E4 E4
-E5
-Eb1
-F4 F4 F4 F4 F4 F4
-B0 
-Eb1 Eb1
-F4 F4
-G4 G4 G4 G4 G4 G4 G4
-C4
-B2 B2
-D6 D6 D6
-A4 A4 A4 A4
-C#3 C#3
-A4 
-F#0
-A4
-Eb1
-A5
-B0
-B4
-Eb7 Eb7
-F#6
-B4 B4 B4 B4 B4 B4 B4 B4 B4 B4
-C5 C5 C5 C5 C5 C5 C5 C5 C5 C5 C5 C5
-A6 A6
-D5 D5 D5 D5 D5 D5 D5 D5 D5
-B6 B6
-E5 E5 E5 E5 E5
-Out of range
-B0
-Eb1 Eb1
-C7 C7
-F5 F5 F5 F5 F5 F5 F5 F5 F5
-G5 G5 G5 G5 G5 G5 G5 G5 G5 G5 G5
-A5 A5 A5 A5 A5 A5 A5 A5 A5 A5
-B5 B5 B5 B5 B5 B5 B5 B5 B5 B5 B5
-Out of range 
-F#0
-G7
-C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6 C6
-F#3
-B0
-Out of range
-B0
-F#0
-B0
-	*/
 	private FrequencyToNote() {}
+	
+	private static int findNoteNamesIndex(String name) {
+		int i = -1;
+		for(i = 0; i < noteNames.length; i++) {
+			if(noteNames[i].compareTo(name) == 0) {
+				break;
+			}
+		}
+		return (i < noteNames.length)? i : -1;
+	}
+	
+	public static int semitonesBetween(Note note1, Note note2) {
+		String name1 = note1.getName() + note1.getSharpFlatEmpty();
+		String name2 = note2.getName() + note2.getSharpFlatEmpty();
+		int index1 = findNoteNamesIndex(name1);
+		int index2 = findNoteNamesIndex(name2);
+		int pos1 = note1.getPosition();
+		int pos2 = note2.getPosition();
+		int value1 = (pos1 * noteNames.length) + index1;
+		int value2 = (pos2 * noteNames.length) + index2;
+		return value2 - value1;
+/*		
+		int semitones = 0;
+		if((pos2 * noteNames.length) + index2 > (pos1 * noteNames.length) + index1) {
+		//if (pos2 > pos1 || index2 > index1) {
+			while(index1 != index2 || pos1 != pos2) {
+				index1++;
+				nSemitones++;
+				if(index1 == noteNames.length) {
+					index1 = 0;
+					pos1++;
+				}
+			}
+		} else {
+			while(index1 != index2 || pos1 != pos2) {
+				index1--;
+				nSemitones--;
+				if(index1 == -1) {
+					index1 = noteNames.length - 1;
+					pos1--;
+				}
+			}			
+		}
+		return nSemitones;*/
+	}
 	
 	public static Note toNote(int index) {
 		if(index == 0 || index == frequencies.length - 1)
@@ -333,11 +149,21 @@ B0
 		}
 	}
 	
+	/**
+	 * 
+	 * @param frequency
+	 * @return The closest Note on the equal tempered scale to {@code frequency}
+	 */
 	public static Note findNote(double frequency) {
 		return toNote(findIndex(frequency)) /*+ " " + findIndex(frequency) + " " + frequencies[findIndex(frequency)]*/;
 		//return frequencies[findIndex(frequency)] +"";
 	}
 	
+	/**
+	 * Returns the closest frequency on the equal tempered scale.
+	 * @param frequency
+	 * @return
+	 */
 	public static double findFrequency(double frequency) {
 		return frequencies[findIndex(frequency)]; /*+ " " + findIndex(frequency) + " " + frequencies[findIndex(frequency)]*/
 		//return frequencies[findIndex(frequency)] +"";
@@ -345,6 +171,75 @@ B0
 	
 	public static int findMidiNote(double frequency) {
 		return toMidiNote(findIndex(frequency));
+	}
+	
+	private static int findIndexExact(double equalTemperamentFrequency) {
+		int index = 0;
+		while(index < frequencies.length && frequencies[index] != equalTemperamentFrequency) {
+			index++;
+		}
+		Util.verify(index < frequencies.length, "findIndexExact was supplied without an \"equal tempered frequency\"");
+		return index;
+	}
+	
+	public static Note findNoteExact(double equalTemperamentFrequency) {
+		return toNote(findIndexExact(equalTemperamentFrequency));
+	}
+	
+	public static double findFrequencyExactOffset(double equalTemperamentFrequency, int offset) {
+		int index = findIndexExact(equalTemperamentFrequency);
+		index += offset;
+		Util.verify(index < frequencies.length && index > -1, 
+				"Offset into findFrequencyExactOffset is out of bounds. Index: " + index + " size: " + frequencies.length + " offset: " + offset
+				+ " frequency: " + equalTemperamentFrequency);
+		if(index < 0)
+			index = 0;
+		else if(index >= frequencies.length)
+			index = frequencies.length - 1;
+		return frequencies[index];
+	}
+	
+	/**
+	 *
+	 * @param frequency1
+	 * @param frequency2
+	 * @param equalTemperament The supplied frequencies are the frequencies supplied by 
+	 * 							{@link FrequencyToNote#findFrequency(double) findFrequency()}
+	 * @return freq1 - freq2 in half notes
+	 */
+	public static int numSemitonesBetween(double frequency1, double frequency2, boolean equalTemperament) {
+		if(equalTemperament) {
+			return findIndexExact(frequency1) - findIndexExact(frequency2);
+		} else {
+			int nSemitones = Integer.MIN_VALUE;
+			double higher, lower;
+			int upDown;
+			if(frequency1 >= frequency2) {
+				higher = frequency1;
+				lower = frequency2;
+				upDown = 1;
+			} else {
+				higher = frequency2;
+				lower = frequency1;
+				upDown = -1;
+			}
+			// I can make more efficient, but I need to be efficient!!!
+			double ratio = higher / lower;
+			double lowestError = Double.MAX_VALUE;
+			for(int i = 0; i < justScaleRatios.length; i++) {
+				double error = (Math.abs(ratio - justScaleRatios[i])) / justScaleRatios[i];
+				if(error < lowestError) {
+				/*	Util.logIfFails(Math.abs(error - lowestError) / lowestError > 0.2, 
+							"Hard to tell whether: " + nSemitones + " or " + (nSemitones + 1) + " semitones: " + (Math.abs(error - lowestError) / lowestError) + " : " +
+							error + " : " + lowestError);*/
+					lowestError = error;
+					nSemitones = i;
+				}
+			}
+			System.out.format(" %3d ",nSemitones * upDown);
+			// System.out.println(ratio + " " + equalTemperamentScaleRatios[nSemitones]);
+			return nSemitones * upDown;	
+		}
 	}
 	
 	public static void main(String args[]) {

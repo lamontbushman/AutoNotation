@@ -37,6 +37,13 @@ public class Note {
 		this.position = position;
 	}
 	
+	public Note(Note note) {
+		this.name = note.name;
+		this.sharpFlatNull = note.sharpFlatNull;
+		this.sharpFlatEmpty = note.sharpFlatEmpty;
+		this.position = note.position;
+	}
+	
 	public char getName() {
 		return name;
 	}
@@ -63,6 +70,12 @@ public class Note {
 				position == note.position &&
 				name == note.name;
 		
+	}
+	
+	public Note toLowerHarmonic() {
+		Note note = new Note(this);
+		note.position--;
+		return note;
 	}
 	
 	public String toString(boolean displayAccidental) {

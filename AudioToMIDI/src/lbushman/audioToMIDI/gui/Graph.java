@@ -2,6 +2,9 @@ package lbushman.audioToMIDI.gui;
 
 import lbushman.audioToMIDI.util.Util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Predicate;
 
 import javafx.collections.transformation.FilteredList;
@@ -34,11 +37,16 @@ public class Graph extends BorderPane {
 	private Number[] data2;
 	private Number[] data3;
 	
+	private List<Series<Number, Number>> allSeries;
+	private List<Number[]> allData;
+	
 	Graph(String title, String xAxis, String yAxis) 
 	{
 		super();
 		data2 = null;
 		data3 = null;
+		allData = new ArrayList<Number[]>();
+		allSeries = new ArrayList<Series<Number, Number>>();
 		setCenter(title, xAxis, yAxis);
 		setTop();
 	}
@@ -55,6 +63,18 @@ public class Graph extends BorderPane {
 	
 	public void clearData3() {
 		series3.getData().clear();
+	}
+	
+	public void clearAllData() {
+		for(int i = 0; i < allSeries.size(); i++) {
+			allSeries.get(i).getData().clear();
+		}
+		allData.clear();
+	}
+	
+	public void clearData(int seriesN) {
+		allSeries.get(seriesN).getData().clear();
+		allData.remove(seriesN);
 	}
 	
 	private TextField newField(String hint, String contents) {
@@ -93,12 +113,17 @@ public class Graph extends BorderPane {
 		minMaxIndex.setPrefWidth(150);
 		minMaxIndex.setEditable(false);		
 		
+		TextField seriesField = newField("series", null);
+		seriesField.setPrefWidth(50);
+		seriesField.setEditable(true);		
+		
 		Button minimumIndexButton = newButton(
 				"Min I", new EventHandler<ActionEvent>() {
 					@Override
 					public void handle(ActionEvent arg0) {
 						int minI = minIndex(Integer.parseInt(begField.getText().toString()),
-								Integer.parseInt(endField.getText().toString()));
+								Integer.parseInt(endField.getText().toString()),
+								Integer.parseInt(seriesField.getText().toString()));
 						minMaxIndex.setText(minI+"");
 					}
 		});
@@ -108,7 +133,8 @@ public class Graph extends BorderPane {
 					@Override
 					public void handle(ActionEvent arg0) {
 						int maxI = maxIndex(Integer.parseInt(begField.getText().toString()),
-								Integer.parseInt(endField.getText().toString()));
+								Integer.parseInt(endField.getText().toString()),
+								Integer.parseInt(seriesField.getText().toString()));
 						minMaxIndex.setText(maxI+"");
 					}
 		});
@@ -122,7 +148,8 @@ public class Graph extends BorderPane {
 	    		"Val@I", new EventHandler<ActionEvent>() {
 	    			@Override
 	    			public void handle(ActionEvent arg0) {
-	    				valueAtIndex.setText(valueAtIndex(Integer.parseInt(indexField.getText()))+"");
+	    				valueAtIndex.setText(valueAtIndex(Integer.parseInt(indexField.getText()),
+	    						Integer.parseInt(seriesField.getText().toString()))+"");
 	    			}
 		});
 	    
@@ -169,7 +196,7 @@ public class Graph extends BorderPane {
 					}
 				});
 	    
-	    hbox.getChildren().addAll(begField, endField, displayFFTButton, 
+	    hbox.getChildren().addAll(begField, endField, displayFFTButton, seriesField,
 	    		minimumIndexButton, maximumIndexButton, minMaxIndex, indexField, 
 	    		valueAtIndexButton, valueAtIndex, widthField, windowField, showWindow, nextWindow, previousWindow);
 	    setTop(hbox);
@@ -189,16 +216,16 @@ public class Graph extends BorderPane {
 */	        
 	}
 
-	public Number valueAtIndex(int index) {
-		return data[index];
+	public Number valueAtIndex(int index, int series) {
+		return allData.get(series)[index];
 	}
 	
-	public int minIndex(int lowerInc, int upperExc) {
-		return Util.minIndex(data, lowerInc, upperExc);
+	public int minIndex(int lowerInc, int upperExc, int series) {
+		return Util.minIndex(allData.get(series), lowerInc, upperExc);
 	}
 	
-	public int maxIndex(int lowerInc, int upperExc) {
-		return Util.maxIndex(data, lowerInc, upperExc);
+	public int maxIndex(int lowerInc, int upperExc, int series) {
+		return Util.maxIndex(allData.get(series), lowerInc, upperExc);
 	}
 	
 	public void setCenter(String title, String xAxis, String yAxis) {
@@ -210,7 +237,7 @@ public class Graph extends BorderPane {
 
 		
 		lineChart.getStylesheets().add("graphs.css");
-        
+ /*       
         series = new XYChart.Series<Number, Number>();
         series.setName(title);//"Original Line"
         //x500principal? security class?
@@ -226,7 +253,7 @@ public class Graph extends BorderPane {
         lineChart.getData().add(series);
         lineChart.getData().add(series2);
         lineChart.getData().add(series3);
-        
+*/        
         setCenter(lineChart);
 	}
 
@@ -245,8 +272,38 @@ public class Graph extends BorderPane {
 		lineChart.updateAxisRange();
 	}	*/
 	
-	
 	public void setRange(int begIndex, int endIndex, boolean startZero) {
+		low = begIndex;
+		high = endIndex;
+		
+		String titles[] = new String[allSeries.size()];
+		for(int i = 0; i < allSeries.size(); i++) {
+			titles[i] = allSeries.get(i).getName();
+		}
+		clearSeries();
+		for(int i = 0; i < allData.size(); i++) {
+			Number[] data = allData.get(i);
+			Series<Number, Number> series = addSeries(titles[i]);
+			
+//			if(data != null && !series.getData().isEmpty()) {
+				// clearData(i);
+				for(int j = begIndex; j < endIndex; j++) {
+					if(j == data.length) {
+						break;
+					}
+					if(startZero) {
+						series.getData().add(new Data<Number, Number>(j - begIndex, data[j]));
+					}
+					else {
+						series.getData().add(new Data<Number, Number>(j, data[j]));
+					}
+				}
+//			}
+			
+		}
+	}
+	
+	public void setRangeOld(int begIndex, int endIndex, boolean startZero) {
 		low = begIndex;
 		high = endIndex;
 		/*clearData();
@@ -335,7 +392,51 @@ public class Graph extends BorderPane {
 			series3.getData().add(new Data<Number, Number>(i, signal[i])); 
 		}
 	}
+	
+/*	public void showpeaks(Number[] signal) {
+		List<Number> fft = Arrays.asList(signal).subList(0, signal.length / 2);
+		int maxI = Util.maxIndex(fft, 0, fft.size());
 		
+	}
+	
+	public boolean isPeak(List<Number> fft, int index) {
+		for(int i = 1; i <= 2; i++) {
+			if()
+		}
+		
+	}*/
+	
+	public void clearSeries() {
+		allSeries.clear();
+		lineChart.getData().clear();
+	}
+	
+	public void addList(Number[] signal, String title) {
+		addSeries(title);
+		allData.add(signal);
+		display(allSeries.size() - 1, signal);	
+	}
+	
+	public Series<Number, Number> addSeries(String title) {
+		Series<Number, Number> series = new XYChart.Series<Number, Number>();
+        series.setName(title);
+        allSeries.add(series);
+        lineChart.getData().add(series);
+		return series;
+	}
+	
+	public void updateList(int series, Number[] signal) {
+		clearData(series);
+		allData.set(series, signal);
+		display(series, signal);
+	}
+	
+	private void display(int series, Number[] signal) {
+		for(int i = 0; i < signal.length; i++) {
+			allSeries.get(series).getData().add(new Data<Number, Number>(i, signal[i])); 
+		}
+	}
+	
 	public void updateList(Number[] signal) {
 		clearData();
 		data = signal;

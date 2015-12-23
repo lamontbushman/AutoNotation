@@ -49,6 +49,17 @@ public class AudioData {
 		numFFT = null;
 	}
 	
+	/**
+	 * To be used only by ProcessSignal.calculateFrequency()
+	 * @param audioFormat
+	 * @param originalSignal
+	 */
+	public AudioData(AudioFormat audioFormat, int[] originalSignal) {
+		format = audioFormat;
+		this.originalSignal = originalSignal;
+		numFFT = null;
+	}
+	
 	private int[] toIntArray(byte[] bites) {
 		Util.timeDiff("toIntArray");
 		//TODO Check format is set

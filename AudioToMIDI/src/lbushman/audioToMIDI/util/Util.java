@@ -28,6 +28,13 @@ public class Util {
 	public static final String ANSI_CYAN = "\u001B[36m";
 	public static final String ANSI_WHITE = "\u001B[37m";
 	
+	public static final Comparator<Integer> COMPARATOR_INTEGER = new Comparator<Integer>() {
+		@Override
+		public int compare(Integer o1, Integer o2) {
+			return o1.compareTo(o2);
+		}
+	};
+
 	private Util() {}
 
 	public static List<Integer> halfList(List<Integer> values) {
@@ -477,6 +484,7 @@ public class Util {
 	
 	private static Map<String, TimeData> currentTmes = new HashMap<String, TimeData>();
 	private static Map<String, Long> totalTimes = new HashMap<String, Long>();
+	public static int integerValue;
 
 	public static long timeDiff(String text, boolean display) {
 		TimeData td = currentTmes.get(text);
@@ -533,6 +541,43 @@ public class Util {
 			}
 		}
 		System.out.println();
+	}
+	
+	public static <T> void compareLists(List<T> list1, List<T> list2) {
+		int size1 = list1.size();
+		int size2 = list2.size();
+		if(size1 != size2) {
+			System.out.println("Lists are not the same size");
+		}
+		int numDifferent = 0;
+		int largest = (size1 > size2)? size1 : size2;
+		for(int i = 0; i < largest; i++) {
+			if( i >= size1 || i>= size2 || !list1.get(i).equals(list2.get(i))) {
+				numDifferent++;
+				System.out.format("%4s ", i);
+			} else {
+				System.out.print("     ");
+			}
+		}		
+		System.out.println();
+		for(int i = 0; i < size1; i++) {
+			if(i < size2 && list1.get(i).equals(list2.get(i))) {
+				System.out.format(" %3s ", list1.get(i));
+			} else {
+				System.out.format(" %3s "/*ANSI_CYAN + */, list1.get(i) /*ANSI_RESET + */);
+			}
+		}
+		System.out.println();
+		for(int i = 0; i < size2; i++) {
+			System.out.format(" %3s ", list2.get(i));
+/*			if(i < size2 && list1.get(i).equals(list2.get(i))) {
+				System.out.print(list2.get(i));
+			} else {
+				System.out.print(ANSI_CYAN + " " + list2.get(i) + " " + ANSI_RESET);
+			}*/
+		}
+		System.out.println();
+		System.out.println("numDifferent: " + numDifferent);
 	}
 
 	public static void compareNotes(List<Note> list1, List<Note> list2) {
@@ -615,5 +660,39 @@ public class Util {
 			}
 		}
 		return -1;
+	}
+	
+	public static int firstIndexAbove(List<Double> values, int start, int noFurther, double value) {
+		double currValue = 0;
+		for(int i = start; i <= noFurther; i++) {
+			currValue = values.get(i);
+			if(currValue >= value) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	
+	public static int lastIndexAboveButBefore(List<Double> values, int start, int noFurther, double value, double before) {
+		double currValue = 0;
+		int index = -1;
+		for(int i = start; i <= noFurther; i++) {
+			currValue = values.get(i);
+			if(currValue >= value) {
+				index = i;
+			}
+			if(currValue <= before) {
+				break;
+			}
+		}
+		return index;
+	}
+
+	public static double error(double val1, double val2) {
+		return (val1 - val2) / val1;
+	}
+	
+	public static double absoluteError(double val1, double val2) {
+		return Math.abs(error(val1, val2));
 	}
 }

@@ -27,7 +27,7 @@ import lbushman.audioToMIDI.io.Note;
 import lbushman.audioToMIDI.io.SheetData;
 import lbushman.audioToMIDI.io.SheetNote;
 import lbushman.audioToMIDI.io.TimeSignature;
-import lbushman.audioToMIDI.util.JArray;
+import lbushman.audioToMIDI.util.DoubleList;
 import lbushman.audioToMIDI.util.Util;
 
 public class ProcessSignal {
@@ -77,9 +77,9 @@ public class ProcessSignal {
 		return Util.average(preFFT);
 	}
 	
-	public void queues() {
+	public void queues(boolean computeAmps, boolean oneArray) {
 		//TODO maybe initialize with rough final size;
-    	Util.timeDiff("QUEUES");
+    	//Util.timeDiff("QUEUES");
     	FFT fftInstance = FFT.getInstance(data.getFftLength());
     	
     	IOQueue<double[], Double> toAmp = new IOQueue<double[], Double>(32) {
@@ -90,6 +90,9 @@ public class ProcessSignal {
 			}
 		};
 		toAmp.start();
+		if(!computeAmps) {
+			toAmp.signalFinished();
+		}
 		
     	IOQueue<Complex[], double[]> toFft = new IOQueue<Complex[], double[]>(32) {
 			@Override
@@ -101,9 +104,14 @@ public class ProcessSignal {
 		toFft.start();
 		
 		//System.out.println("before computeComplexAndOverlap3");
-		computeComplexAndOverlap3(true, toAmp, toFft);
+		if(computeAmps) {
+			computeComplexAndOverlap3(true, toAmp, toFft);
+			toAmp.signalFinished();
+		} else {
+			computeComplexAndOverlap3(true, null, toFft);
+		}
 		//Finished adding to queues.
-		toAmp.signalFinished();
+		
 		toFft.signalFinished();
 		
 		
@@ -120,22 +128,25 @@ public class ProcessSignal {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		Util.timeDiff("Copying");
+		//Util.timeDiff("Copying");
 		data.setAmp(toAmp.processedList().toArray(new Double[toAmp.maxSize()]));
 		toAmp = null;
-		List<Double> absolutes = new ArrayList<Double>(toFft.maxSize() * data.getFftLength());
-		for(double[] dArray : toFft.processedList()) {
-			for(double d : dArray) {
-				absolutes.add(d);
+		if(oneArray) {
+			List<Double> absolutes = new ArrayList<Double>(toFft.maxSize() * data.getFftLength());
+			for(double[] dArray : toFft.processedList()) {
+				for(double d : dArray) {
+					absolutes.add(d);
+				}
 			}
+			data.setFftAbsolute(absolutes);
+		} else {
+			// Older code works with one array of all the ffts in one. While this works with a list of ffts.
+			data.setAbsolute(toFft.processedList());
 		}
-		data.setFftAbsolute(absolutes);
 		toFft = null;
 		
-		//data.setAbsolute(toFft.processedList());
-		Util.timeDiff("Copying");
-		
-		Util.timeDiff("QUEUES");
+//		Util.timeDiff("Copying");	
+//		Util.timeDiff("QUEUES");
 	}
 	
 	public void oldPath() {
@@ -168,7 +179,7 @@ public class ProcessSignal {
     	List<Integer> signal = Arrays.asList(data.getOriginalSignal());
     	*/
     	
-    	queues();
+    	queues(true, true);
     	//oldPath();
     	
     	//System.out.println("begin");
@@ -993,10 +1004,51 @@ if(false) {
 	
 	public double calculateFrequencyFromOriginalSignal(int overlapFromIndex, int overlapToIndex) {
 		Double[] fft = compute1FftOnOriginalSignal(overlapFromIndex, overlapToIndex);
-		int bin =  Util.maxIndex(fft, 0, fft.length / 2);
+		//int bin =  Util.maxIndex(fft, 0, fft.length / 2);
+		
+		int bin = FindFrequency.findFundamentalBin(Arrays.asList(fft).subList(0, fft.length / 2));
+		
 		return FundamentalFrequency.computeFrequency(bin, data.getFormat().getSampleRate(), fft.length);
 	};
 	
+	/**
+	 * The idea is to find a more accurate frequency by recomputing the ffts for this object 
+	 *      with a larger fft length than the original between fftIndex1 and fftIndex2. 
+	 *      With a smaller ratio sampleRate / fftLength, there is more precision.
+	 * 
+	 * @param fftIndex1 inclusive
+	 * @param fftIndex2 exclusive
+	 * @return
+	 */
+	public Note calculateNote(int fftIndex1, int fftIndex2, List<Integer> continualBins) {
+		int fromIndex = findOriginalIndex(fftIndex1 * fftLength);
+		int toIndex = findOriginalIndex(fftIndex2 * fftLength);
+		
+		int[] signal = Arrays.copyOfRange(data.getOriginalSignal(), fromIndex, toIndex);
+		// Warning don't change Format.
+		AudioData audioData = new AudioData(data.getFormat(), signal);
+		ProcessSignal ps = new ProcessSignal(audioData, 0.25, fftLength * 2);
+		ps.queues(false, false);
+		List<Integer> bins = new ArrayList<Integer>();
+		for(double[] fft : audioData.getAbsolute()) {
+			bins.add(FindFrequency.findFundamentalBin(new DoubleList(fft).subList(0, fft.length / 2)));
+		}
+		List<Integer> binModes = Util.mode(bins);
+		Util.logIfFails(binModes.size() == 1, "caculateNote: More than one mode. " + bins + " modes : " + binModes);
+		Util.logIfFails(!(binModes.size() == 2 && Math.abs(binModes.get(0) - binModes.get(1)) > 2), "caculateNote: Two modes. Picking the lower. " + bins + " modes : " + binModes);
+		Util.verify(binModes.size() < 3, "caculateNote: More than two modes. " + bins + " modes : " + binModes);
+		int bin = binModes.get(0);
+		if(binModes.size() == 2 && Math.abs(bin - binModes.get(1)) > 2) {
+			bin = Math.min(bin, binModes.get(1)); // Assuming that they are harmonics, picking the lower.
+		}
+		continualBins.add(bin);
+		
+		Note note = FindFrequency.computeNote(bin, audioData.getFormat().getSampleRate(), audioData.getFftLength());
+		System.out.println(count + " " + note + " bin: " + bin  + " modes: " + binModes + " bins: " + bins);
+		count = (count + 1) % 113;
+		return note;
+	}
+	public static int count = 0;
 	/**
 	 * Indexes are an index into overlapped data. i.e. The indexes pertaining to toAmp, or toComplex which
 	 * are passed to / added into by computeComplexAndOverlap3
@@ -1027,8 +1079,7 @@ if(false) {
 		return weightsThenData;
 	}
 	
-	private void computeComplexAndOverlap3(boolean doHann, IOQueue<double[],Double> toAmp,
-			IOQueue<Complex[], double[]> toComplex) {
+	private void computeComplexAndOverlap3(boolean doHann, IOQueue<double[],Double> toAmp, IOQueue<Complex[], double[]> toComplex) {
 		int fftLength = data.getFftLength();
 		double overlapPercentage = data.getOverlapPercentage();
 		int[] signal = data.getOriginalSignal();
@@ -1078,7 +1129,9 @@ if(false) {
 				complex[hanIndex] = new Complex(value);
 				hanIndex++;
 			}
-			toAmp.add(abs);
+			if(toAmp != null) {
+				toAmp.add(abs);
+			}
 			toComplex.add(complex);
 			
 			//Util.totalTimeDiff("wostreams");
