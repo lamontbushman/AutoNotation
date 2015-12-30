@@ -1,29 +1,69 @@
 package lbushman.audioToMIDI.processing;
 
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.ListIterator;
+
+import javax.print.attribute.standard.PDLOverrideSupported;
 
 import lbushman.audioToMIDI.util.DoubleList;
 import lbushman.audioToMIDI.util.Util;
 
 enum Marks {
 //	FIRST_NOTE, // first note is longer than a beat
+	
+	// TODO these should generally be louder than...
 	FIRST_1_5 (1.1),
 	FIRST_G_1_5 (1.1),
 	
 	UP_BEAT (1.0),	// the last note is smaller than a beat
 	FULL (0.0),		// the note spans the entire measure
 //	LAST_NOTE   // last note is longer than a beat
+	
+	// TODO ...these. When we get amp data, this can help narrow down.
+	// ... The weight can be related to the relative loudness in the "measure".
 	LAST_1_5 (1.0),
 	LAST_G_1_5 (1.0),
 	
 	
-	MORE_THAN_ONE (0.0),
-	NUM_MEASURES_MARKED (0.0);
+	MORE_THAN_ONE,
+	NUM_MEASURES_MARKED,
+	TOTAL_MEASURES,
+	PERCENTAGE,
+	
+	// TODO review hymn 10 and see if I can better see why the other options shouldn't work.
+	
+	// TODO look at hymn four. It is very hard for me to lead it 0,6.
+	// ... Check to see if 1 1 2 1 1. Where a longer note is surrounded by shorter notes makes sense.
+	// ... This happens for 0,6 on hymn 4.
+	// ... at least significantly. Hymn 3 "prom - ised the" 1 1.5 .5
+	// ... Rule revised if there is nothing saying it is a measure and there is a longer note in the measure, flag this as not being
+	// ... a possible down beat, or mark it lower appropriately.
+	
+	// ... ^ look at song 27 as well. I am trying to get percentage and msure_strength to work almost by themselves, with above penalty (possibly another Mark)
+	// ... winner is largest msure_strength unless n,2 & n,4 then largest percentage is the winner out of those two.
+	
+	
+	// TODO check to see if there is a correlation to how the song starts out. It seems like that the way the first full measure starts,
+	// ... sets a pattern for a lot of the rest of the song to start with a similar down beat pattern.
+	// ... ditto for the upbeat.
+	// ... it might not always use it, but when, you do see a length/pattern in the song, it helps the person hear where the downbeat is.
+	
+	// High on the Mountain Top is 2/2 instead of 4/4 only because of speed. It is too hard to lead 4/4 with the spead it is at.
+	
+	// TODO look for patterns in "non" duration marked measures. Like hymn 3. The first note is always higher pitched than the rest.
+
+	
+	//num_marks / num_measures_marked
+	MSURE_STRENGTH;
 	
 	private final double weight;
 	Marks(double weight) {
 		this.weight = weight;
+	}
+	
+	Marks() {
+		this.weight = 0.0;
 	}
 	
 	public double weight() {
@@ -80,19 +120,47 @@ public class FindDownBeat {
 	}	
 	
 	private void postProcess() {
+		// before weights and any exceptions
+		PossibleDownBeat preWinnerPdb = null;
+		PossibleDownBeat winner = null;
+		double highestScore = Double.MIN_VALUE;
+		String preWinnersText = "";
+		for(PossibleDownBeat pdb1 : pDownBeats) {
+			double[] measureMarks = pdb1.getMeasureMarks();
+			double score = 0;
+			for(Marks mark : Marks.values()) {
+				if(mark.weight() > 0) {
+					score += measureMarks[mark.ordinal()];
+				}
+			}
+			if(score >= highestScore) {
+				if(score == highestScore) {
+					preWinnersText += pdb1.toString() + "\n";
+				} else {
+					preWinnersText = pdb1.toString() + "\n";
+				}
+				highestScore = score;
+				preWinnerPdb = pdb1;
+			}
+		}
+		
+		highestScore = Double.MIN_VALUE;
 		for(PossibleDownBeat pdb : pDownBeats) {
 			double[] measureMarks = pdb.getMeasureMarks();
 			double score = 0;
 			for(Marks mark : Marks.values()) {
 				score += measureMarks[mark.ordinal()] * mark.weight();
 			}
+			if(score > highestScore) { // return the first highest one
+				winner = pdb;
+			}
 			pdb.setScore(score);
 		}
 
-				
+		boolean doTest = false;				
 		int numPoss = pDownBeats.size();
 		if((numPoss == 2 || numPoss == 3)) {
-			boolean doTest = false;
+
 			PossibleDownBeat pdb1 = contains(0,2);
 			PossibleDownBeat pdb2 = contains(0,4);
 			if(pdb1 != null && pdb2 != null) {
@@ -111,10 +179,71 @@ public class FindDownBeat {
 				if(fraction >= 2/9.0) { // 3/11, 4/9, 4/12
 					// The highest possible score, effectively choosing it.
 					// Want to keep the others around in pDownBeats for future possible analysis.
+					System.out.println("Used a 2|4 rule FULL/NUM_MEASURES_MARKED at 2/9.0 to find the downbeat.");
 					pdb2.setScore(Integer.MAX_VALUE);
+					winner = pdb2;
 				}
 			}
 		}
+		
+		// PDLOverrideSupported
+		if(!doTest) {
+			int maxI = -1;
+			double maxValue = Double.MIN_VALUE;
+			int index = 0;
+			for(PossibleDownBeat pdb2 : pDownBeats) {
+				if(pdb2.getScore() > maxValue) {
+					maxValue = pdb2.getScore();
+					maxI = index;
+				}
+				index++;
+			}
+			
+			PossibleDownBeat pdb = pDownBeats.get(maxI);
+			int offset = pdb.getOffset();
+			int length = pdb.getLength();
+			if(length == 3 || length == 6) {
+				double value = pdb.getMeasureMarks()[Marks.PERCENTAGE.ordinal()];
+				length = (length == 3)? 6 : 3; 
+				pdb = contains(offset, length);
+				if(pdb != null) {
+					double otherValue = pdb.getMeasureMarks()[Marks.PERCENTAGE.ordinal()];
+					if(otherValue - value > 0.2) {
+						pdb.setScore(Double.MAX_VALUE);
+						System.out.println("Used a 3|6 rule percentage to find the downbeat");
+						winner = pdb;
+					}
+				}
+			}
+		}
+		
+		if(!preWinnerPdb.equals(winner)) {
+			System.out.println("The original winner was one of the following(\n" + preWinnersText + ")");
+		}
+		
+/*		if(!doTest) {
+			PossibleDownBeat pdb1 = contains(0,3);
+			PossibleDownBeat pdb2 = contains(0,6);
+			if(pdb1 != null && pdb2 != null) {
+				doTest = true;
+			} else {
+				pdb1 = contains(1,3);
+				pdb2 = contains(1,6);
+				if(pdb1 != null && pdb2 != null) {
+					doTest = true;
+				}
+			}
+			if(doTest) {
+				
+			}
+		}*/
+		
+		/*for(PossibleDownBeat pdb : pDownBeats) {
+			double[] measureMarks = pdb.getMeasureMarks();
+			for(Marks mark : Marks.values()) {
+				//measureMarks[mark.ordinal()] = measureMarks[mark.ordinal()] / (double) measureMarks[Marks.TOTAL_MEASURES.ordinal()];
+			}
+		}*/
 	}
 	
 	private void find() {
@@ -134,6 +263,7 @@ public class FindDownBeat {
     		
     		double msurLen = 0;
     		int marked = 0;
+    		int totalMarked = 0;
     		while(durationIter.hasNext()) {
     			Double next = durationIter.next();
     			// Beginning of measure
@@ -177,12 +307,16 @@ public class FindDownBeat {
     				if(marked > 0) {
     					numMarked++;
     					if(marked > 1) {
-    					//	measureMarks[Marks.MORE_THAN_ONE.ordinal()]++;
+    						measureMarks[Marks.MORE_THAN_ONE.ordinal()]++;
     					}
+    					totalMarked += marked;
     					marked = 0;
     				}
     			}
     			Util.verify(msurLen < p.getLength(), "find: Shouldn't happen 2");
+    		}
+    		if(msurLen != 0) {
+    			numMeasures++;
     		}
     		// TODO I can set based on the amount of beats per measure, how much the different measureMarks are worth.
     		// TODO maybe a ratio between measureMarks, maybe the highest count (no percentage)
@@ -190,6 +324,9 @@ public class FindDownBeat {
     		//p.setScore(measureMarks[Marks.MORE_THAN_ONE.ordinal()]);
     		p.setScore(Util.sum(new DoubleList(measureMarks)) - measureMarks[Marks.FULL.ordinal()] /* / (double) numMarked*/);
     		measureMarks[Marks.NUM_MEASURES_MARKED.ordinal()] = numMarked;
+    		measureMarks[Marks.TOTAL_MEASURES.ordinal()] = numMeasures;
+    		measureMarks[Marks.PERCENTAGE.ordinal()] = numMarked / (double) numMeasures;
+    		measureMarks[Marks.MSURE_STRENGTH.ordinal()] = totalMarked / (double) numMarked;
     		//p.setScore(Util.sumInt(measureMarks) / (double) numMeasures //+
     		//		   /*Util.sumInt(measureMarks) / (double) numMarked*/);
     	
