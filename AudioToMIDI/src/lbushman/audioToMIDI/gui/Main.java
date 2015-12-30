@@ -22,6 +22,7 @@ import lbushman.audioToMIDI.processing.AudioData;
 import lbushman.audioToMIDI.processing.AutoTuneNotes;
 import lbushman.audioToMIDI.processing.DownBeatData;
 import lbushman.audioToMIDI.processing.DownBeatDetection;
+import lbushman.audioToMIDI.processing.FindDownBeat;
 import lbushman.audioToMIDI.processing.FindFrequency;
 import lbushman.audioToMIDI.processing.FrequencyToNote;
 import lbushman.audioToMIDI.processing.FundamentalFrequency;
@@ -385,20 +386,6 @@ if(false) {
 		// TODO There is a chance this may fail. Seek further implementation.
 		Util.logIfFails(modes.size() == 1, "More than one mode for differences between onsets. modes: " + modes);
 		return (int) Math.round(Util.average(modes));
-    }
-    
-    public List<Integer> onsetDiff(List<Integer> onsets) {
-    	Util.verify(onsets.size() >= 2, "There are less than two onsets.");
-    	ListIterator<Integer> it = onsets.listIterator();
-    	int previous = it.next();
-    	int current = 0;
-    	List<Integer> differences = new ArrayList<Integer>();
-    	while(it.hasNext()) {
-    		current = it.next();
-    		differences.add(current - previous);
-    		previous = current;
-    	}
-    	return differences;
     }
     
     private void displayFrequencies() {
@@ -790,7 +777,7 @@ if(false) {
     	// We might want to change this to the distance that divides other numbers the best.
     	// i.e. Praise to the man. Maybe what we have here is what we want, but later account for
     	// what a beat actually is not the average difference between onsets. 
-    	int btdifference = avgOnsetDiff(onsetDiff(onsets));
+    	int btdifference = avgOnsetDiff(Util.diffList(onsets));
     	// btdifference = 22;
     	List<Integer> trackedBeats = ProcessSignal.beatTracker(onsets, btdifference);
     	
@@ -844,117 +831,9 @@ if(false) {
     		System.out.print(i + " ");
     	}
     	System.out.println();
-if(false) {     	
+    	
+    	FindDownBeat fdb = new FindDownBeat(data.noteDurations);
 
-	
-	/*    	final int[] POSSIBLE_BTS_PER_MSURE = {2,3,4,6,8};
-    	final int MAX_BTS_A_PICKUP_MSURE = POSSIBLE_BTS_PER_MSURE[POSSIBLE_BTS_PER_MSURE.length - 1] - 1;
-    	List<Pair<Integer, Integer>> offsetNMeasureLengths = new ArrayList<Pair<Integer, Integer>>();
-    	for(int offset = 0; offset < MAX_BTS_A_PICKUP_MSURE; offset++) {
-    		for(int btsPerMsure : POSSIBLE_BTS_PER_MSURE) {
-    			offsetNMeasureLengths.add(new Pair<Integer, Integer>(offset, btsPerMsure));
-    		}
-    	}
-    	
-    	System.out.println("offsetNMeasureLengths");
-    	for(Pair<Integer, Integer> p : offsetNMeasureLengths) {
-    		System.out.print(p + " ");
-    	}*/
-    	
-    	List<PossibleDownBeat> pDownBeats = PossibleDownBeat.intitalList();
-    	/***********************************************************************************************************/
-    	// Simplest and most accurate (non) down beat filter
-    	// A note (at least in hymns never crosses a measure). In other words, an onset must occur on the down beat.
-    	// For High on the Mountain Top, this removed all but 5 of the 40 possible offsetNMeasureLengths.
-    	/**********************************************************************************************************/
-    	ListIterator<PossibleDownBeat> pdbIter = pDownBeats.listIterator();
-    	while(pdbIter.hasNext()) {
-    		PossibleDownBeat p = pdbIter.next();
-    		int offset = p.getOffset();
-    		int msurLen = p.getLength();
-    		for(int i = offset; i < notesOnBeat.size(); i += msurLen) {
-    			if(notesOnBeat.get(i) == null) {
-    				System.out.println("Removed: " + p);
-    				pdbIter.remove();
-    				break;
-    			}
-    		}
-    	}
-    	
-    	System.out.println("Valid downbeats");
-    	pdbIter = pDownBeats.listIterator();
-    	while(pdbIter.hasNext()) {
-    		System.out.print(pdbIter.next() + " ");
-    	}
-    	
-    	
-    	
-    	pdbIter = pDownBeats.listIterator();
-    	System.out.println("asdffdas");
-    	while(pdbIter.hasNext()) {
-    		PossibleDownBeat p = pdbIter.next();
-    		int offset = p.getOffset();
-    		int msurLen = p.getLength();
-    		
-    		//This is banking on noteDurations to be exactly correct.
-    		ListIterator<Double> nDIter = data.noteDurations.listIterator(offset);
-    		double sum = 0;
-    		double first = 0;
-    		double second = 0;
-    		int numMeasures = 0;
-    		int numFirstLarger = 0;
-    		while(nDIter.hasNext()) {
-    			double duration = nDIter.next();
-    			sum += duration;
-				if(first == 0) {
-					first = duration;
-				} else if(second == 0) {
-					second = duration;
-				}
-    			if(sum >= msurLen) {
-    				// I am wondering if this shouldn't happen because of the first removal of down beats.
-    				// if(sum != msurLen) {System.out.println("pppppppppppppppppppppppppp"); pdbIter.remove(); break;}
-    				Util.verify(sum == msurLen,
-    						"This probably means that this isn't the correct downbeat."
-    						+ "Or if it is, note durations aren't correct / We have a meausre that doesn't add up for some reason.");
-    				numMeasures++;
-    				if(first > second) {
-    					numFirstLarger++; // TODO Add these to a list.
-    				}
-    				// We need another percentage. What though? all possible numFirstLarger's? All ones that are in the current pDownBeats.
-    				// 
-    				p.setScore(numFirstLarger/* / (double) numMeasures*/);
-    				System.out.println("\t\t" + p);
-    				first = second = sum = 0;
-    				
-    			}
-    		}
-    		
-    		// Maybe We could do add another one to see how the total amount of measures fit into groups of (4?)?
-    		
-    		/*for(int i = offset; i < notesOnBeat.size(); i += msurLen) {
-    			Util.verify(notesOnBeat.get(i) != null, "Should not be null");
-    			if(notesOnBeat.get(i) == null) {
-    				System.out.println("Removed: " + p);
-    				pdbIter.remove();
-    				break;
-    			}
-    		}*/    		
-    	}
-    	System.out.println(pDownBeats);
-    	//
-    	// Can make above more efficient.
-    	// 		listOfIndexesWhenNull - loop notesOnBeat and insert when null
-    	// 		loop listOfIndexesWhenNull
-    	//			loop remaining offsetNMeasureLengths
-    	//				if(index divides (msurLen - offset)
-    	//					remove offsetNMeasureLen
-    	// Output of above: 0:2 0:4 0:6 0:8 1:4 1:8 2:2 2:4 2:6 2:8 4:2 4:4 4:6 4:8 5:4 5:8 6:2 6:4 6:6 6:8 
-        // 7, 11, 15 - index of nulls -- they invalidate anything that is a multiple of these (with offset)
-    	// 2,4,6, and 8 doesn't divide 7 or 11 or 15
-    	// 4 and 8 doesn't divide 7-1 or 11-1 or 15-1 but 2 does divide 6, 10, and 14
-    	//
- }  	
 
 //EASY FREQS
 
@@ -972,11 +851,11 @@ if(false) {
 */
 //NOTES
 //The Spirit of God 
- Note[] actualNotes = {new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('A',null,4),new Note('B',false,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('A',null,4),new Note('B',false,4)};
- Double[] song2 = {1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.5,0.5,3.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,1.5,0.5,0.5,0.5,0.5,0.5,1.0,1.0,1.0,1.0,2.0,1.0,1.0,3.0};
+// Note[] actualNotes = {new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('A',null,4),new Note('B',false,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('A',null,4),new Note('B',false,4)};
+// Double[] song2 = {1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.5,0.5,3.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,1.5,0.5,0.5,0.5,0.5,0.5,1.0,1.0,1.0,1.0,2.0,1.0,1.0,3.0};
 // Mary had a little lamb
-//Note[] actualNotes = {new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('A',null,4),new Note('A',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4)};
-// Double[] song2 = {1.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,4.0};
+Note[] actualNotes = {new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('A',null,4),new Note('A',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4)};
+Double[] song2 = {1.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,4.0};
 		
 System.out.println(audioData.getNumFFT());
 System.out.println(audioData.getFftAbsolute().size());
@@ -999,6 +878,93 @@ System.out.println(audioData.getFftAbsolute().size());
 		List<Integer> morePreciseBins = new ArrayList<Integer>();
 		List<Note> preAwesomeNotes = new ArrayList<Note>();
 		
+		List<Note> originalNotes = new ArrayList<Note>();
+		final int numHarmonics = 3;
+		List<List<Integer>> bins = new ArrayList<List<Integer>>(numHarmonics);
+		for(int harmonicI = 0; harmonicI < numHarmonics; harmonicI++) {
+			bins.add(new ArrayList<Integer>());
+		}
+		
+		for(int i = 0; i < onsets.size(); i++) {
+			Integer onset = onsets.get(i);
+			while(offsetIter.hasNext() && (offset = offsets.get(offsetIter.nextIndex())) < onset) {
+				offsetIter.next();
+			}
+			// Ensure that offset is not greater than the next onset
+			if(i + 1 < onsets.size() && offset > onsets.get(i + 1)) {
+				Util.verify(false, "Probably matching onsets to offsets is off.");
+			}
+			int freqOnset = Util.firstIndexAbove(corrValuesPerc, onset, offset, 0.025);
+			int noFurther;
+			if (i + 1 < onsets.size()) {
+				noFurther = onsets.get(i + 1);
+			} else {
+				noFurther = corrValuesPerc.size() - 1;
+			}
+			int freqOffset = Util.lastIndexAboveButBefore(corrValuesPerc, freqOnset, noFurther, .02, 0);
+			//frequencyOffsets.add(freqOffset);
+			
+			List<List<Integer>> tempBins = new ArrayList<List<Integer>>(numHarmonics);
+			for(int harmonicI = 0; harmonicI < numHarmonics; harmonicI++) {
+				tempBins.add(new ArrayList<Integer>());
+			}
+			
+			for(int j = freqOnset; j <= freqOffset; j++) {
+				int base = j * audioData.getFftLength();
+				int top = base + audioData.getFftLength() / 2;
+				List<Double> subList = audioData.getFftAbsolute().subList(base, top);
+				//bins.add(FindFrequency.getFirstHarmonic(subList));
+/*					Util.integerValue = i;
+					if(i == 22) {
+						System.out.print(" fftj: " + j );
+					}*/
+				for(int harmonicI = 0; harmonicI < numHarmonics; harmonicI++) {
+					int bin = FindFrequency.getHarmonic(subList, harmonicI + 1);
+					tempBins.get(harmonicI).add(bin);
+				}
+				
+				
+			}
+			/*if(i == 22 || i == 21) {
+				System.out.println(i + " bins: " + bins);
+			}*/
+			for(int harmonicI = 0; harmonicI < numHarmonics; harmonicI++) {
+				List<Integer> binModes = Util.mode(tempBins.get(harmonicI));
+				Util.logIfFails(binModes.size() == 1, "More than one bin mode. " + tempBins.get(harmonicI) + " modes : " + binModes);
+				bins.get(harmonicI).add(binModes.get(0));
+				//fundamentalBins.add(binModes.get(0));
+				//preAwesomeNotes.add(atn.getNote(binModes.get(0)));
+			}
+		}
+
+		for(Integer bin : bins.get(0)) {
+			originalNotes.add(atn.getNote(bin));
+		}
+		List<Integer> semitonesFromNotes = ff.computeSemitones(bins.get(0), true, true);
+		List<List<Integer>> allSemitones = new ArrayList<List<Integer>>();
+		List<List<Note>> vettedNotes = new ArrayList<List<Note>>();
+		for(List<Integer> binsI : bins) {
+			vettedNotes.add(ff.computeNotesFromBins(binsI, originalNotes, semitonesFromNotes));
+			allSemitones.add(ff.computeSemitones(binsI, false, true));
+			allSemitones.add(ff.computeSemitones(binsI, false, false));
+		}
+		
+		
+		List<Integer> mostFrequentSemitones = new ArrayList<Integer>();
+		for(int i = 0; i < allSemitones.get(0).size(); i++) {
+			List<Integer> list = new ArrayList<Integer>();
+			for(int j = 0; j < allSemitones.size(); j++) {
+				list.add(allSemitones.get(j).get(i));
+			}
+			List<Integer> modes = Util.mode(list);
+			Util.verify(modes.size() == 1, "This must be equal to one. Or else we have a huge problem.");
+			mostFrequentSemitones.add(modes.get(0));
+		}
+		
+		vettedNotes.add(ff.computeNotes(mostFrequentSemitones, originalNotes, semitonesFromNotes));
+		
+		offset = 0;
+		offsetIter = offsets.listIterator();
 		for(int i = 0; i < onsets.size(); i++) {
 			Integer onset = onsets.get(i);
 			// TODO ensure that offset is not greater than the next onset
@@ -1057,26 +1023,26 @@ System.out.println(audioData.getFftAbsolute().size());
 			}
 			int freqOffset = Util.lastIndexAboveButBefore(corrValuesPerc, freqOnset, noFurther, .02, 0);
 			frequencyOffsets.add(freqOffset);
-			List<Integer> bins = new ArrayList<Integer>();
+			List<Integer> bins2 = new ArrayList<Integer>();
 			List<Integer> harmonicBins = new ArrayList<Integer>();
 			for(int j = freqOnset; j <= freqOffset; j++) {
 				base = j * audioData.getFftLength();
 				top = base + audioData.getFftLength() / 2;
 				subList = audioData.getFftAbsolute().subList(base, top);
-				//bins.add(FindFrequency.getFirstHarmonic(subList));
+				//bins2.add(FindFrequency.getFirstHarmonic(subList));
 				Util.integerValue = i;
 				if(i == 22) {
 					System.out.print(" fftj: " + j );
 				}
-				int bin = FindFrequency.getHarmonic(subList, 6);
-				bins.add(bin);
+				int bin = FindFrequency.getHarmonic(subList, 3);
+				bins2.add(bin);
 				harmonicBins.add(FindFrequency.getHarmonic(subList, 2));
 			}
 			if(i == 22 || i == 21) {
-				System.out.println(i + " bins: " + bins);
+				System.out.println(i + " bins: " + bins2);
 			}
-			List<Integer> binModes = Util.mode(bins);
-			Util.verify(binModes.size() == 1, "More than one bin mode. " + bins + " modes : " + binModes);
+			List<Integer> binModes = Util.mode(bins2);
+			Util.verify(binModes.size() == 1, "More than one bin mode. " + bins2 + " modes : " + binModes);
 			fundamentalBins.add(binModes.get(0));
 			
 			preAwesomeNotes.add(atn.getNote(binModes.get(0)).toLowerHarmonic().toLowerHarmonic().toLowerHarmonic());
@@ -1158,8 +1124,7 @@ System.out.println(audioData.getFftAbsolute().size());
 		Util.compareNotes(firstHarmonicNotes, Arrays.asList(actualNotes));
 		System.out.println("morePreciseNotes");
 		Util.compareNotes(morePreciseNotes, Arrays.asList(actualNotes));
-		
-		
+				
 		List<Integer> actualSemitones = new ArrayList<Integer>();
 		Note lastNote = actualNotes[0];
 		for(int i = 1; i < actualNotes.length; i++) {
@@ -1187,6 +1152,14 @@ System.out.println(audioData.getFftAbsolute().size());
 		
 		System.out.println("actualNotes.length: " + actualNotes.length);
 		System.out.println(fixedFundamentals);
+		
+		System.out.println("vettedNotes");
+		for(List<Note> notelist : vettedNotes) {
+			Util.compareNotes(notelist, Arrays.asList(actualNotes));
+		}
+		
+		System.out.println("mostFrequentSemitones");
+		Util.compareLists(mostFrequentSemitones, actualSemitones);
 		//atn.autoTune();
 		
     	//TODO get its own graph

@@ -12,6 +12,10 @@ public class Note {
 	private String sharpFlatEmpty;
 	private int position;
 	
+	private final static String[] noteNames = {
+		"C","C#","D","Eb","E","F","F#","G","G#","A","Bb","B"
+	};
+	
 	public Note() {
 		name = INVALID;
 		sharpFlatNull = null;

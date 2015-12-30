@@ -12,6 +12,7 @@ public class PossibleDownBeat {
 	private int offset;
 	private int length; // measure length
 	private double score; // "probability"
+	private double[] measureMarks;
 
 	public PossibleDownBeat(int offset, int length, double score) {
 		this.offset = offset;
@@ -57,7 +58,31 @@ public class PossibleDownBeat {
 		this.score = score;
 	}
 	
+	public double[] getMeasureMarks() {
+		return measureMarks;
+	}
+
+	public void setMeasureMarks(double[] measureMarks) {
+		this.measureMarks = measureMarks;
+	}
+	
+	public String toString(double[] array) {
+		if(array == null) {
+			return "";
+		}
+		
+		String out = "[";
+		for(double v : array) {
+			out += v + ", ";
+		}
+		return out.substring(0, out.length() - 2) + "]";
+	}
+
 	public String toString() {
-		return offset + ":" + length + ":" + score;
+		return offset + ":" + length + ":" + score + ": " + toString(measureMarks);
+	}
+	
+	public boolean equals(PossibleDownBeat pdb) {
+		return pdb.length == length && pdb.offset == offset;
 	}
 }

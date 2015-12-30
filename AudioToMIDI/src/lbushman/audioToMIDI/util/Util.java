@@ -83,6 +83,14 @@ public class Util {
 		return sum;
 	}
 	
+	public static int sumInt(int[] values) {
+		int sum = 0;
+		for(int value : values) {
+			sum += value;
+		}
+		return sum;
+	}
+	
     public static double[] convertDoubles(List<Double> doubles)
     {
         double[] ret = new double[doubles.size()];
@@ -695,4 +703,18 @@ public class Util {
 	public static double absoluteError(double val1, double val2) {
 		return Math.abs(error(val1, val2));
 	}
+	
+    public static List<Integer> diffList(List<Integer> list) {
+    	Util.verify(list.size() >= 2, "There are less than two onsets.");
+    	ListIterator<Integer> it = list.listIterator();
+    	int previous = it.next();
+    	int current = 0;
+    	List<Integer> differences = new ArrayList<Integer>();
+    	while(it.hasNext()) {
+    		current = it.next();
+    		differences.add(current - previous);
+    		previous = current;
+    	}
+    	return differences;
+    }
 }

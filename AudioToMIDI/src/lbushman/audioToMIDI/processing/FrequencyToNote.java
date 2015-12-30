@@ -24,7 +24,7 @@ public class FrequencyToNote {
 		8370.9 // Above range
 	};
 	private final static String[] noteNames = {
-			"C","C#","D","Eb","E","F","F#","G","G#","A","Bb","B"
+		"C","C#","D","Eb","E","F","F#","G","G#","A","Bb","B"
 	};
 	/**
 	 * 	Index 0, ratio between a note and itself
@@ -50,6 +50,33 @@ public class FrequencyToNote {
 			}
 		}
 		return (i < noteNames.length)? i : -1;
+	}
+	
+	public static Note toNewNote(Note note, int semitones) {
+		String name = note.getName() + note.getSharpFlatEmpty();
+		int index = findNoteNamesIndex(name);
+		int pos = note.getPosition();
+		
+		int newIndex = (index + semitones);
+		int newPosition; // = newIndex / noteNames.length;
+		if(newIndex < 0) {
+			newPosition = pos + (((newIndex + 1) / noteNames.length) - 1);
+		} else {
+			newPosition = pos + (newIndex / noteNames.length);
+		}
+		newIndex %= noteNames.length;
+		newIndex = (newIndex < 0)? noteNames.length + newIndex : newIndex;
+		char noteName = noteNames[newIndex].charAt(0);
+		Boolean sharpFlatNull;
+		if(noteNames[newIndex].length() == 1) {
+			sharpFlatNull = null;
+		} else if(noteNames[newIndex].charAt(1) == '#') {
+			sharpFlatNull = true;
+		} else {
+			sharpFlatNull = false;
+		}
+		return new Note(noteName, sharpFlatNull, newPosition);
+		//int value = (pos * noteNames.length) + index;
 	}
 	
 	public static int semitonesBetween(Note note1, Note note2) {
@@ -207,7 +234,7 @@ public class FrequencyToNote {
 	 * 							{@link FrequencyToNote#findFrequency(double) findFrequency()}
 	 * @return freq1 - freq2 in half notes
 	 */
-	public static int numSemitonesBetween(double frequency1, double frequency2, boolean equalTemperament) {
+	public static int numSemitonesBetween(double frequency1, double frequency2, boolean equalTemperament, boolean justOrEqualScale) {
 		if(equalTemperament) {
 			return findIndexExact(frequency1) - findIndexExact(frequency2);
 		} else {
@@ -223,11 +250,18 @@ public class FrequencyToNote {
 				lower = frequency1;
 				upDown = -1;
 			}
+			
+			double[] scaleRatios;
+			if(justOrEqualScale) {
+				scaleRatios = justScaleRatios;
+			} else {
+				scaleRatios = equalTemperamentScaleRatios;
+			}
 			// I can make more efficient, but I need to be efficient!!!
 			double ratio = higher / lower;
 			double lowestError = Double.MAX_VALUE;
-			for(int i = 0; i < justScaleRatios.length; i++) {
-				double error = (Math.abs(ratio - justScaleRatios[i])) / justScaleRatios[i];
+			for(int i = 0; i < scaleRatios.length; i++) {
+				double error = (Math.abs(ratio - scaleRatios[i])) / scaleRatios[i];
 				if(error < lowestError) {
 				/*	Util.logIfFails(Math.abs(error - lowestError) / lowestError > 0.2, 
 							"Hard to tell whether: " + nSemitones + " or " + (nSemitones + 1) + " semitones: " + (Math.abs(error - lowestError) / lowestError) + " : " +

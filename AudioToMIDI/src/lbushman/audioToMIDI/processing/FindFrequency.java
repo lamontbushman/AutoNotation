@@ -181,6 +181,59 @@ public class FindFrequency {
 		fundamentalI = Util.maxIndex(fft, Math.max(0,fundamentalI - searchLen), Math.min(fft.size() - 1, fundamentalI + searchLen + 1));
 		return fundamentalI;
 	}
+	
+	/**
+	 * Computes notes based off of bin ratios in comparison with the original fundamental bins.
+	 * The bins supplied can be the fundamental bins or harmonics of the fundamental.
+	 * @param bins The fundamental bins or multiples of the fundamental.
+	 * @param notes Original notes based off fundamental bins.
+	 * @return
+	 */
+	public List<Note> computeNotes(List<Integer> semitones, List<Note> originalNotes, List<Integer> semitonesFromNotes) {
+		List<Note> notes = new ArrayList<Note>(originalNotes);
+		notes.set(0, originalNotes.get(0));
+		Util.verify(semitones != null && semitones.size() == semitonesFromNotes.size(), "computeNotes: lists are not the same size.");
+		for(int i = 0; i < semitones.size(); i++) {
+			int currSemitone = FrequencyToNote.semitonesBetween(notes.get(i), notes.get(i + 1));
+			int offset = semitones.get(i) - semitonesFromNotes.get(i);
+			offset = semitones.get(i) - currSemitone;
+
+			// I believe FrequencyToNote.findFrequency() should guarantee that this doesn't fail.
+			// Or maybe this might be because the fft bins are not precise enough.
+			Util.logIfFails(Math.abs(offset) < 2, "You broke music!! Semitones are more than one apart.");
+			//if(Math.abs(offset) < 2) {
+				Note note = FrequencyToNote.toNewNote(originalNotes.get(i + 1), offset);
+				notes.set(i + 1, note);
+			//}
+		}
+		return notes;
+	}
+	
+	public List<Note> computeNotesFromBins(List<Integer> bins, List<Note> originalNotes, List<Integer> semitonesFromNotes) {
+		Util.verify(bins.size() - 1 == semitonesFromNotes.size() && bins.size() == originalNotes.size(), "computeNotes: bins, originalNotes, semitonesFromNotes sizes are not correct.");	
+		List<Integer> semitones = computeSemitones(bins, false, true);
+		return computeNotes(semitones, originalNotes, semitones);
+	}
+	
+	public List<Integer> computeSemitones(List<Integer> bins, boolean noteNotRatio, boolean justNotEqual) {
+		List<Integer> semitones = new ArrayList<Integer>();
+		Util.verify(bins != null && bins.size() > 0, "computeNotes: bins is null or empty.");
+		double lastFreq = computeFrequency(bins.get(0), sampleRate, fftLength);
+		if(noteNotRatio) {
+			lastFreq = FrequencyToNote.findFrequency(lastFreq);
+		}		
+		for(int i = 1; i < bins.size(); i++) {
+			double freq = computeFrequency(bins.get(i), sampleRate, fftLength); // Probably don't need this, ratio is a ratio.
+			if(noteNotRatio) {
+				freq = FrequencyToNote.findFrequency(freq);
+			}
+			int nJustSemitones = FrequencyToNote.numSemitonesBetween(freq, lastFreq, noteNotRatio, justNotEqual);
+			semitones.add(nJustSemitones);
+			lastFreq = freq;
+		}
+		Util.verify(semitones.size() + 1 == bins.size(), "computeSemitones: sizes didn't end up as should be: semitones: " + semitones.size() + " bins: " + bins.size());
+		return semitones;
+	}
 
 	public static List<Integer> semitones = new ArrayList<Integer>();
 	public List<Note> computeNotes(List<Integer> fundamentalBins) {
@@ -220,7 +273,7 @@ public class FindFrequency {
 		for(int i = 1; i < fundamentalBins.size(); i++) {
 
 			frequencies[i] = computeFrequency(fundamentalBins.get(i), sampleRate, fftLength);
-			int nJustSemitones = FrequencyToNote.numSemitonesBetween(frequencies[i], frequencies[i - 1], false);
+			int nJustSemitones = FrequencyToNote.numSemitonesBetween(frequencies[i], frequencies[i - 1], false, true);
 			semitones.add(nJustSemitones);
 			temperedFrequencies[i] = FrequencyToNote.findFrequencyExactOffset(temperedFrequencies[i - 1], nJustSemitones);
 			notes.add(FrequencyToNote.findNoteExact(temperedFrequencies[i]));
