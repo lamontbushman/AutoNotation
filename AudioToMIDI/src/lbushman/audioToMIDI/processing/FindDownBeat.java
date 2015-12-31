@@ -43,7 +43,18 @@ enum Marks {
 	// ... ^ look at song 27 as well. I am trying to get percentage and msure_strength to work almost by themselves, with above penalty (possibly another Mark)
 	// ... winner is largest msure_strength unless n,2 & n,4 then largest percentage is the winner out of those two.
 	
+	// ... ^^ this fails for hymn 49. Unless, for 6/8, I treat a count as a pickup line. For hymn 48, the single count counted basically as a pickup
 	
+	// ... ^ Same with hymn 50 but 2/2. It seems like .75 can be used as the downbeat.
+	// ... ^ 53 is also 2/2, but has not .75, only 1 and .5, .5 as a couple of upbeats.
+	
+	// ... ^ hymn 56 has a .75, .25 downbeat. I can use this as a Mark and probably similar rule/combined rule for the above.
+	// ... ^ in general, I think this would be a good song to analyze for other rules. i.e. a run of .5 notes for the down beat.
+	// ... ^^ Hymn 59 shows that the upbeat can be relative to the downbeat. The downbeat is 3, the upbeat is 1.
+	// ... ^ 42 and 43 shows that there are strong indications with the first note being 1.5, .5 maybe generalize with a 3 to 1 ratio.
+	
+	// Song 52, I would get completely wrong, not just the downbeat.
+	 
 	// TODO check to see if there is a correlation to how the song starts out. It seems like that the way the first full measure starts,
 	// ... sets a pattern for a lot of the rest of the song to start with a similar down beat pattern.
 	// ... ditto for the upbeat.
@@ -138,9 +149,9 @@ public class FindDownBeat {
 					preWinnersText += pdb1.toString() + "\n";
 				} else {
 					preWinnersText = pdb1.toString() + "\n";
+					preWinnerPdb = pdb1;
 				}
 				highestScore = score;
-				preWinnerPdb = pdb1;
 			}
 		}
 		
@@ -153,6 +164,7 @@ public class FindDownBeat {
 			}
 			if(score > highestScore) { // return the first highest one
 				winner = pdb;
+				highestScore = score;
 			}
 			pdb.setScore(score);
 		}

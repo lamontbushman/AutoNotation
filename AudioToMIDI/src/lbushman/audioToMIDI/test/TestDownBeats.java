@@ -47,10 +47,10 @@ public class TestDownBeats {
 					System.out.println("Passed anyways: " + pdb);
 					passed = true;
 				} else {
-					System.out.println("\t\t\t\t\tFailed: " + pdb);
+					System.out.println("\t\t\t\t\t\t\t\t\t\t\t\t\tFailed: " + pdb);
 				}
 			} else {
-				System.out.println("\t\t\t\t\tDOESN'T contain correct down beat " + dbeats.size());
+				System.out.println("\t\t\t\t\t\t\t\t\t\t\t\t\tDOESN'T contain correct down beat " + dbeats.size());
 			}
 		}
 		System.out.println();
