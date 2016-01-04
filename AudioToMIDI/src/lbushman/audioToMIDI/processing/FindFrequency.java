@@ -18,9 +18,15 @@ public class FindFrequency {
 	
 	public static int getHarmonic(List<Double> fft, int nth) {
 		int fundamental = findFundamentalBin(fft);
+		if(fundamental == -1) {
+			Util.logIfFails(false, "getHarmonic: fundamental == -1");
+			return -1;
+		}
 		int harmonic = fundamental * nth;
 		int searchLen = 5;
-		harmonic = Util.maxIndex(fft, harmonic - searchLen, harmonic + searchLen + 1);
+		Util.logIfFails(harmonic - searchLen > -1 && harmonic + searchLen + 1 < fft.size() , "Range correction in getHarmonic. nth: " + nth);
+		harmonic = Util.maxIndex(fft, Math.max(0, harmonic - searchLen), Math.min(fft.size() - 1, harmonic + searchLen + 1));
+		Util.verify(harmonic >= 0, "stopping");
 		if (true)
 		return harmonic;
 
@@ -93,7 +99,11 @@ public class FindFrequency {
 				maxIsFundamental = false;
 		
 		int maxIDoubleI = maxI * 2;
-		maxIDoubleI = Util.maxIndex(fft, Math.max(0,maxIDoubleI - searchLen), Math.min(fft.size() - 1, maxIDoubleI + searchLen + 1));		
+		maxIDoubleI = Util.maxIndex(fft, Math.max(0,maxIDoubleI - searchLen), Math.min(fft.size() - 1, maxIDoubleI + searchLen + 1));
+		if(maxIDoubleI == -1) {
+			System.out.println("time: " + Util.getProperty("time", "null") + " maxIDoubleI was passed the array.");
+			return -1; // Assumes there isn't a valid note being played currently.
+		}
 		double maxIDoubleV = fft.get(maxIDoubleI);
 		
 		// The first two harmonics are by far the loudest.

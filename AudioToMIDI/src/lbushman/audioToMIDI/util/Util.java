@@ -176,6 +176,7 @@ public class Util {
     public static int maxIndex(List<? extends Number> list, int lowerInc, int upperExc) {
     	Double max = Double.NEGATIVE_INFINITY;
     	int index = -1;
+    	Util.verify(lowerInc >= 0 && upperExc <= list.size(), "One of your favorites!! maxIndex");
     	for(int i = lowerInc; i < upperExc; i++) {
     		if(list.get(i).doubleValue() > max) {
     			index = i;
@@ -231,6 +232,14 @@ public class Util {
     		} else {
     			System.exit(1);
     		}
+    	}
+    }
+    
+    public static void assertBool(boolean passed, String str) {
+    	if(!passed) {
+    		System.err.println("<<<" +str + ">>>");
+    		System.err.flush();
+    		System.exit(1);
     	}
     }
     
@@ -685,6 +694,9 @@ public class Util {
 		double currValue = 0;
 		int index = -1;
 		for(int i = start; i <= noFurther; i++) {
+			if(i >= values.size() || i < 0) {
+				System.out.println("breaks");
+			}
 			currValue = values.get(i);
 			if(currValue >= value) {
 				index = i;
@@ -717,4 +729,42 @@ public class Util {
     	}
     	return differences;
     }
+
+	public static String equalsOne(String string, String... strings) {
+		Util.verify(string != null, "equalsOne: string is null");
+		Util.verify(strings != null && strings.length != 0, "strings is null or empty");
+		for(String testString : strings) {
+			if(string.equals(testString)) {
+				return testString;
+			}
+		}
+		return null;
+	}
+
+	public static int validInteger(String string, int i, int j) {
+		final int FALSE_INT = Integer.MIN_VALUE;
+		int testInt;
+		try {
+			testInt = Integer.parseInt(string);
+			if(testInt < i || testInt > j) {
+				return FALSE_INT;
+			}
+		} catch(NumberFormatException nfe) {
+			System.out.println("Error: " + string + " is not an integer");
+			return FALSE_INT;
+		}
+		return testInt;
+	}
+
+	public static String setProperty(String key, String value) {
+		return System.setProperty(key, value);
+	}
+	
+	public static String getProperty(String key, String defaultValue) {
+		return System.getProperty(key, defaultValue);
+	}
+	
+	public static String getProperty(String key) {
+		return System.getProperty(key);
+	}
 }

@@ -1,11 +1,10 @@
 package lbushman.audioToMIDI.processing;
 
-import java.util.GregorianCalendar;
+import java.util.Comparator;
 import java.util.List;
 import java.util.ListIterator;
 
-import javax.print.attribute.standard.PDLOverrideSupported;
-
+import lbushman.audioToMIDI.test.TestDownBeats;
 import lbushman.audioToMIDI.util.DoubleList;
 import lbushman.audioToMIDI.util.Util;
 
@@ -13,23 +12,25 @@ enum Marks {
 //	FIRST_NOTE, // first note is longer than a beat
 	
 	// TODO these should generally be louder than...
-	FIRST_1_5 (1.1),
-	FIRST_G_1_5 (1.1),
+	FIRST_1_5 (1.1, "F=1_5"),
+	FIRST_G_1_5 (1.1, "F>1_5"),
+	FIRST_G_SECOND (0.7, "F>S"),
 	
-	UP_BEAT (1.0),	// the last note is smaller than a beat
-	FULL (0.0),		// the note spans the entire measure
+	UP_BEAT (1.0, "UP"),	// the last note is smaller than a beat
+	FULL (1.0, "FULL"),		// the note spans the entire measure
 //	LAST_NOTE   // last note is longer than a beat
 	
 	// TODO ...these. When we get amp data, this can help narrow down.
 	// ... The weight can be related to the relative loudness in the "measure".
-	LAST_1_5 (1.0),
-	LAST_G_1_5 (1.0),
+	LAST_1_5 (1.0, "L=1_5"),
+	LAST_G_1_5 (1.0, "L>1_5"),
 	
 	
-	MORE_THAN_ONE,
-	NUM_MEASURES_MARKED,
-	TOTAL_MEASURES,
-	PERCENTAGE,
+	NMSURS_MRKD_G_1 ("NMd>1"),
+	NMSURS_MRKD ("NMd"),
+	NMSURS ("NM"),
+	NMSRS_MRKD_O_NMSRS ("NMd/NM"),
+	
 	
 	// TODO review hymn 10 and see if I can better see why the other options shouldn't work.
 	
@@ -66,25 +67,52 @@ enum Marks {
 
 	
 	//num_marks / num_measures_marked
-	MSURE_STRENGTH;
+	NMRKS_O_NMSRS_MRKD ("NMk/NMd"),
+	NMRKS_O_NMSURS ("NMk/NM");
 	
 	private final double weight;
-	Marks(double weight) {
+	private String text;
+	public static int formatLength = 0;
+	Marks(double weight, String text) {
 		this.weight = weight;
+		this.text = text;
 	}
 	
-	Marks() {
+	Marks(String text) {
 		this.weight = 0.0;
+		this.text = text;
 	}
 	
 	public double weight() {
 		return weight;
+	}
+	
+	public String text() {
+		ensureFormatLength();
+		return String.format("%" + (formatLength) + "s", text);
+	}
+	
+	public static String format(double value) {
+		ensureFormatLength();
+		return String.format("%0" + (formatLength - 1) + ".3f", value).replace("0", " ");
+	}
+	
+	private static void ensureFormatLength() {
+		if(formatLength == 0) {
+			Marks[] marks = Marks.values();
+			for(Marks mark : marks) {
+				if(mark.text.length() > formatLength) {
+					formatLength = mark.text.length();
+				}
+			}
+		}
 	}
 }
 
 public class FindDownBeat {
 	private List<Double> durations;
 	private List<PossibleDownBeat> pDownBeats;
+	private PossibleDownBeat winner;
 	public FindDownBeat(List<Double> durations) {
 		this.durations = durations;
 		pDownBeats = PossibleDownBeat.intitalList();
@@ -94,6 +122,17 @@ public class FindDownBeat {
 	}
 	
 	public void showPossibleDownBeats() {
+		System.out.format("%14s","");
+		for(Marks mark : Marks.values()) {
+			System.out.print(mark.text() + " ");
+		}
+		System.out.println();
+		pDownBeats.sort(new Comparator<PossibleDownBeat>() {
+			@Override
+			public int compare(PossibleDownBeat o1, PossibleDownBeat o2) {
+				return Double.compare(o2.getScore(), o1.getScore());
+			}
+		});
 		for(PossibleDownBeat p : pDownBeats){
 			System.out.println(p);
 		}
@@ -131,6 +170,12 @@ public class FindDownBeat {
 	}	
 	
 	private void postProcess() {
+		if(TestDownBeats.currentSong == 10) {
+			System.out.println("Break Point.");
+		}
+		if(pDownBeats.size() == 0) {
+			return;
+		}
 		// before weights and any exceptions
 		PossibleDownBeat preWinnerPdb = null;
 		PossibleDownBeat winner = null;
@@ -155,12 +200,15 @@ public class FindDownBeat {
 			}
 		}
 		
+		PossibleDownBeat pdb02 = new PossibleDownBeat(0, 2);
 		highestScore = Double.MIN_VALUE;
 		for(PossibleDownBeat pdb : pDownBeats) {
 			double[] measureMarks = pdb.getMeasureMarks();
 			double score = 0;
 			for(Marks mark : Marks.values()) {
-				score += measureMarks[mark.ordinal()] * mark.weight();
+//				if(!(pdb02.equals(pdb) && mark == Marks.FULL)) {
+					score += measureMarks[mark.ordinal()] * mark.weight();
+//				}
 			}
 			if(score > highestScore) { // return the first highest one
 				winner = pdb;
@@ -186,7 +234,7 @@ public class FindDownBeat {
 			}
 			if(doTest) {
 				double fraction = pdb1.getMeasureMarks()[Marks.FULL.ordinal()] / 
-						(double) pdb1.getMeasureMarks()[Marks.NUM_MEASURES_MARKED.ordinal()];
+						(double) pdb1.getMeasureMarks()[Marks.NMSURS_MRKD.ordinal()];
 				//If there are "too many" full measures choose the higher measure
 				if(fraction >= 2/9.0) { // 3/11, 4/9, 4/12
 					// The highest possible score, effectively choosing it.
@@ -210,29 +258,59 @@ public class FindDownBeat {
 				}
 				index++;
 			}
-			
+			if(maxI == -1) {
+				return;
+			}
 			PossibleDownBeat pdb = pDownBeats.get(maxI);
 			int offset = pdb.getOffset();
 			int length = pdb.getLength();
 			if(length == 3 || length == 6) {
-				double value = pdb.getMeasureMarks()[Marks.PERCENTAGE.ordinal()];
+				double markedMsurePerc = pdb.getMeasureMarks()[Marks.NMSRS_MRKD_O_NMSRS.ordinal()];
+				double measureStrength = pdb.getMeasureMarks()[Marks.NMRKS_O_NMSRS_MRKD.ordinal()];
 				length = (length == 3)? 6 : 3; 
 				pdb = contains(offset, length);
 				if(pdb != null) {
-					double otherValue = pdb.getMeasureMarks()[Marks.PERCENTAGE.ordinal()];
-					if(otherValue - value > 0.2) {
-						pdb.setScore(Double.MAX_VALUE);
-						System.out.println("Used a 3|6 rule percentage to find the downbeat");
-						winner = pdb;
+					double otherPerc = pdb.getMeasureMarks()[Marks.NMSRS_MRKD_O_NMSRS.ordinal()];
+					double otherStrength = pdb.getMeasureMarks()[Marks.NMRKS_O_NMSRS_MRKD.ordinal()];
+					/*if(otherValue - value > 0.2) {*/
+					if(TestDownBeats.currentSong == 29 || TestDownBeats.currentSong == 43) {
+						System.out.println("break");
+					}
+					if(otherPerc - markedMsurePerc > 0.30 ) { // .25, 35
+					//	if(!(measureStrength - otherStrength > 0.5)) {
+							pdb.setScore(Double.MAX_VALUE);
+							System.out.println("Used a 3|6 rule percentage to find the downbeat");
+							winner = pdb;
+					//	} else {
+					//		System.out.println("Almost used a 3|6 rule percentage to find the downbeat");
+					//	}
 					}
 				}
+			} else if(length == 2 || length == 4){
+				double markedMsurePerc = pdb.getMeasureMarks()[Marks.NMSRS_MRKD_O_NMSRS.ordinal()];
+				double measureStrength = pdb.getMeasureMarks()[Marks.NMRKS_O_NMSRS_MRKD.ordinal()];
+				length = (length == 2)? 4 : 2; 
+				pdb = contains(offset, length);
+				if(pdb != null) {
+					double otherPerc = pdb.getMeasureMarks()[Marks.NMSRS_MRKD_O_NMSRS.ordinal()];
+					double otherStrength = pdb.getMeasureMarks()[Marks.NMRKS_O_NMSRS_MRKD.ordinal()];
+					if(otherPerc - markedMsurePerc >= 0.25 ) { // .25, 35
+						if(measureStrength - otherStrength > .65) {
+							System.out.println("Almost used the second 2|4 rule percentage to find the downbeat");
+						} else {
+							pdb.setScore(Double.MAX_VALUE);
+							System.out.println("Used the second 2|4 rule percentage to find the downbeat");
+							winner = pdb;
+						}
+					}
+				}				
 			}
 		}
 		
 		if(!preWinnerPdb.equals(winner)) {
 			System.out.println("The original winner was one of the following(\n" + preWinnersText + ")");
 		}
-		
+		this.winner = winner;
 /*		if(!doTest) {
 			PossibleDownBeat pdb1 = contains(0,3);
 			PossibleDownBeat pdb2 = contains(0,6);
@@ -258,6 +336,10 @@ public class FindDownBeat {
 		}*/
 	}
 	
+	public PossibleDownBeat getWinner() {
+		return winner;
+	}
+	
 	private void find() {
     	ListIterator<PossibleDownBeat> pdbIter = pDownBeats.listIterator();
     	while(pdbIter.hasNext()) {
@@ -271,43 +353,55 @@ public class FindDownBeat {
     		
     		double[] measureMarks = new double[Marks.values().length];
     		int numMeasures = 0;
-    		int numMarked = 0;
+    		int numMeasuresMarked = 0;
     		
     		double msurLen = 0;
     		int marked = 0;
-    		int totalMarked = 0;
+    		int numMarkings = 0;
     		while(durationIter.hasNext()) {
-    			Double next = durationIter.next();
+    			Double currDuration = durationIter.next();
     			// Beginning of measure
     			if(msurLen == 0) {
-    				if(next > 1 && next != p.getLength()) {
-    					if(next == 1.5) {
+    				//Maybe don't want to include if secondNote + currDuration == p.getLength()
+    				if(currDuration > 1 && currDuration != p.getLength()) {
+    					if(currDuration == 1.5) {
     						measureMarks[Marks.FIRST_1_5.ordinal()]++;
     					} else {
     						measureMarks[Marks.FIRST_G_1_5.ordinal()]++;
     					}
     					//measureMarks[Marks.FIRST_NOTE.ordinal()]++;
     					marked++;
+    				} else if(currDuration != p.getLength()){
+    					int nextIndex = durationIter.nextIndex();
+    					if(nextIndex != durations.size()) {
+	    					Double secondNote = durations.get(nextIndex);
+	    					if(currDuration > secondNote) {
+	    						//if(currDuration + secondNote < p.getLength())
+	    						Util.verify(currDuration + secondNote <= p.getLength(), "removeNonMultiples() has an error"); 
+	    						measureMarks[Marks.FIRST_G_SECOND.ordinal()]++;
+	    						marked++;
+	    					}
+    					}
     				}
     			}
     			
-    			msurLen += next;
+    			msurLen += currDuration;
     			
     			//End of measure
     			if(msurLen == p.getLength()) {
     				msurLen = 0;
     				numMeasures++;
-    				if(next < 1) {
+    				if(currDuration < 1) {
     					measureMarks[Marks.UP_BEAT.ordinal()]++;
     					marked++;
-    				} else if (next > 1) {
-    					if(next == p.getLength()) {
+    				} else if (currDuration > 1) {
+    					if(currDuration == p.getLength()) {
     						
     						// Gives smaller lengths too much credit
     						measureMarks[Marks.FULL.ordinal()]++;
     						marked++;
     					} else {
-        					if(next == 1.5) {
+        					if(currDuration == 1.5) {
         						measureMarks[Marks.LAST_1_5.ordinal()]++;
         					} else {
         						measureMarks[Marks.LAST_G_1_5.ordinal()]++;
@@ -317,11 +411,11 @@ public class FindDownBeat {
     					}
     				}
     				if(marked > 0) {
-    					numMarked++;
+    					numMeasuresMarked++;
     					if(marked > 1) {
-    						measureMarks[Marks.MORE_THAN_ONE.ordinal()]++;
+    						measureMarks[Marks.NMSURS_MRKD_G_1.ordinal()]++;
     					}
-    					totalMarked += marked;
+    					numMarkings += marked;
     					marked = 0;
     				}
     			}
@@ -335,10 +429,13 @@ public class FindDownBeat {
     		
     		//p.setScore(measureMarks[Marks.MORE_THAN_ONE.ordinal()]);
     		p.setScore(Util.sum(new DoubleList(measureMarks)) - measureMarks[Marks.FULL.ordinal()] /* / (double) numMarked*/);
-    		measureMarks[Marks.NUM_MEASURES_MARKED.ordinal()] = numMarked;
-    		measureMarks[Marks.TOTAL_MEASURES.ordinal()] = numMeasures;
-    		measureMarks[Marks.PERCENTAGE.ordinal()] = numMarked / (double) numMeasures;
-    		measureMarks[Marks.MSURE_STRENGTH.ordinal()] = totalMarked / (double) numMarked;
+    		measureMarks[Marks.NMSURS_MRKD.ordinal()] = numMeasuresMarked;
+    		measureMarks[Marks.NMSURS.ordinal()] = numMeasures;
+    		measureMarks[Marks.NMSRS_MRKD_O_NMSRS.ordinal()] = numMeasuresMarked / (double) numMeasures;
+    		measureMarks[Marks.NMRKS_O_NMSRS_MRKD.ordinal()] = numMarkings / (double) numMeasuresMarked;
+    		measureMarks[Marks.NMRKS_O_NMSURS.ordinal()] = numMarkings / (double) numMeasures;
+//    		measureMarks[Marks.WEighted_PERCENTAGE.ordinal()] = numMeasuresMarked * (some kind of weight 1.1 similar to above metric) / (double) numMeasures;
+  
     		//p.setScore(Util.sumInt(measureMarks) / (double) numMeasures //+
     		//		   /*Util.sumInt(measureMarks) / (double) numMarked*/);
     	

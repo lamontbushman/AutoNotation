@@ -1,19 +1,20 @@
 package lbushman.audioToMIDI.io;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ListIterator;
 
 import lbushman.audioToMIDI.util.Util;
 
 public class KeySignature {
-	final private static char[] major = {'F','C','G','D','A','E','B'}; 
-	final private static char[] minor = {'B','E','A','D','G','C','F'};
+	final private static Character[] major = {'F','C','G','D','A','E','B'}; 
+	final private static Character[] minor = {'B','E','A','D','G','C','F'};
 	
 	final private Boolean majorMinor;
 	final private int numSharpsOrFlats;
 	
-	KeySignature(Boolean majorMinor, int numSharpsOrFlats) {
+	public KeySignature(Boolean majorMinor, int numSharpsOrFlats) {
 		this.majorMinor = majorMinor;
 		this.numSharpsOrFlats = numSharpsOrFlats;
 	}
@@ -25,12 +26,44 @@ public class KeySignature {
 		}
 		
 		String output = (majorMinor)? "#" : "b";
-		char[] keyList = (majorMinor)? major : minor;
+		Character[] keyList = (majorMinor)? major : minor;
 		for(int i = 0; i < numSharpsOrFlats; i++) {
 			output += keyList[i];
 		}
 		
 		return output;
+	}
+	
+	/**
+	 * Tests to see if a note should be sharp or flat or not (null).
+	 * @param note
+	 * @return
+	 */
+	public Boolean shouldBeSharpFlatOrNull(Note note) {
+		if(majorMinor) {
+			if(Arrays.asList(major).subList(0, numSharpsOrFlats).contains(note.getName())) {
+				return true;
+			} else {
+				return null;
+			}
+		} else if (!majorMinor){
+			if(Arrays.asList(minor).subList(0, numSharpsOrFlats).contains(note.getName())) {
+				return false;
+			} else {
+				return null;
+			}
+		} else {
+			return null;
+		}
+	}
+	
+	public Note conform(Note note) {
+		Boolean sharpFlatOrNull = shouldBeSharpFlatOrNull(note);
+		if(sharpFlatOrNull != note.getSharpFlatNull()) {
+			return new Note(note.getName(), sharpFlatOrNull, note.getPosition());
+		} else {
+			return new Note(note);
+		}
 	}
 	
 	public boolean contains(Note note) {
@@ -89,7 +122,7 @@ majorMinor is not the same
 	
 		
 		//Otherwise, when majorMinor is not null
-		char[] keyList = null;
+		Character[] keyList = null;
 		char name = note.getName();
 		
 		if(name == Note.INVALID) {
@@ -194,7 +227,7 @@ majorMinor is not the same
 			}
 		}
 		
-		char[] majorMinorList = null;
+		Character[] majorMinorList = null;
 		List<Integer> thisList = null;
 		List<Integer> thatList = null;
 		

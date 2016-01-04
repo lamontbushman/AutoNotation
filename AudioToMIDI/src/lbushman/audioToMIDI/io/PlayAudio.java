@@ -20,6 +20,8 @@ public class PlayAudio {
 	public PlayAudio(byte[] data, AudioFormat format) {
 		this.data = data;
 		this.format = format;
+		this.format = new AudioFormat(format.getSampleRate() / 2, format.getSampleSizeInBits(), format.getChannels(),
+				true, format.isBigEndian());
 	}
 	
 	public boolean isPlaying() {

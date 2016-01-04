@@ -77,9 +77,25 @@ public class PossibleDownBeat {
 		}
 		return out.substring(0, out.length() - 2) + "]";
 	}
+	
+	public String measureMarks() {
+		if(measureMarks == null) {
+			return "";
+		}
+		StringBuilder sb = new StringBuilder();
+		sb.append("[");
+		for(double m : measureMarks) {
+			sb.append(Marks.format(m) + ", ");
+		}
+		return sb.substring(0, sb.length() - 2) + "]";
+	}
 
 	public String toString() {
-		return offset + ":" + length + ":" + score + ": " + toString(measureMarks);
+		return offsetNLength() + ":" + String.format("%-7.2e", score) + ": " + measureMarks();
+	}
+	
+	public String offsetNLength() {
+		return offset + ":" + length;
 	}
 	
 	public boolean equals(PossibleDownBeat pdb) {

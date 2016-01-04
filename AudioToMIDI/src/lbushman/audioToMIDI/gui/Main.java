@@ -29,6 +29,7 @@ import lbushman.audioToMIDI.processing.FundamentalFrequency;
 import lbushman.audioToMIDI.processing.PossibleDownBeat;
 import lbushman.audioToMIDI.processing.ProcessSignal;
 import lbushman.audioToMIDI.processing.RunningWindowStats;
+import lbushman.audioToMIDI.test.ReadSongs;
 import lbushman.audioToMIDI.util.Util;
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
@@ -400,6 +401,7 @@ if(false) {
     	
     	List<Double> freqs = new ArrayList<Double>();
     	for(int time = 0; time < audioData.getNumFFT(); time++) {
+    		Util.setProperty("time", time + "");
     		int fromI = time * fftLen;
 	    	int toI = fromI + halfFFtLen;
 	    	List<Double> halfFft = ffts.subList(fromI, toI);
@@ -585,6 +587,9 @@ if(false) {
 //ONSETS   	
     	ArrayList<Integer> offsets = new ArrayList<Integer>();
     	ArrayList<Integer> onsets = new ArrayList<Integer>();
+    	ArrayList<Integer> atBases = new ArrayList<Integer>();
+    	ArrayList<Integer> atPeaks = new ArrayList<Integer>();
+    	ArrayList<Integer> topIToLeastIs = new ArrayList<Integer>();
     	boolean atBase = false;
     	boolean atPeak = false;
     	double baseV = 0;
@@ -605,18 +610,22 @@ if(false) {
     		double perc = corrValuesPerc.get(i);
     		// TODO probably switch to old numbers (maybe not, extra numbers might be needed???), but now include a rule that the highest in the range must be so much higher than the lowest found in the (first half of the) range. 
     		// Found bottom
-    		if(perc < /*0.017*/0.018 ) { //(absolute min (0.009 0.008 too low)  .018 getting a little scary to be cutting into a peak.  At one point gives 2 .017 - 0.020 a decent number for matching amp peak.
+    		if(perc < /*0.017*/ 0.018/*0.04*/ ) { //(absolute min (0.009 0.008 too low)  .018 getting a little scary to be cutting into a peak.  At one point gives 2 .017 - 0.020 a decent number for matching amp peak.
     			if(atBase == false) {
-    				offsets.add(i);
+    				atBases.add(i);
     //onsets.add(topI);
 //onsets.add(leastI);
 	//onsets.add(i); // beginning of peak
     				//onsets.add(topAmpI);
     				//onsets.add(onsetI);
     				Util.verify(topI >= leastI, "topI <= leastI");
+    				boolean justAdded = false;
     				for(int beg = topI; beg >= leastI; beg--) {
+    					topIToLeastIs.add(beg);
     					if(corrValuesPerc.get(beg) <= 0.019) {
+    						offsets.add(i); //TODO LDB NOW
     						onsets.add(beg);
+    						justAdded = true;
     						break;
     					}
     				}
@@ -637,11 +646,14 @@ if(false) {
     					System.out.println("removed one: " + onsets.get(onsets.size() -1) + " leastValue: " + leastV + " topV: " + topV);
     					onsets.remove(onsets.size() -1);
     				}*/
-    				
-    				if(topV - leastV < 0.020) {
+    		//TODO LDB put back NOW
+/*    				
+    				if(justAdded && topV - leastV < 0.020) {
     					System.out.println("removed one: " + onsets.get(onsets.size() -1) + " leastValue: " + leastV + " topV: " + topV + " diff: " + (topV - leastV));
+    					offsets.remove(offsets.size() - 1); //TODO LDB NOW
     					onsets.remove(onsets.size() -1);
     				}
+*/
     				
     				topAmpV = 0;
     				topV = 0;
@@ -663,7 +675,7 @@ if(false) {
     			}
     			
 
-    			
+    			atPeaks.add(i);
     			atPeak = true;
     			atBase = false;
     		} else {
@@ -699,6 +711,10 @@ if(false) {
 			}
 		});
     	System.out.println(values);
+    	
+    	// Remove the first one, which should be at/near the beginning. TODO LDB NOW beware of removing above
+    	onsets.remove(0);
+    	offsets.remove(0);
 
     	ListIterator<Integer> pOLIter = onsets.listIterator();
 												if(false) {
@@ -831,8 +847,6 @@ if(false) {
     		System.out.print(i + " ");
     	}
     	System.out.println();
-    	
-    	FindDownBeat fdb = new FindDownBeat(data.noteDurations);
 
 
 //EASY FREQS
@@ -851,12 +865,21 @@ if(false) {
 */
 //NOTES
 //The Spirit of God 
-// Note[] actualNotes = {new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('A',null,4),new Note('B',false,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('A',null,4),new Note('B',false,4)};
-// Double[] song2 = {1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.5,0.5,3.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,1.5,0.5,0.5,0.5,0.5,0.5,1.0,1.0,1.0,1.0,2.0,1.0,1.0,3.0};
+//Note[] actualNotes = {new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('A',null,4),new Note('B',false,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('A',null,4),new Note('B',false,4)};
+//Double[] actualDurations = {1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.5,0.5,3.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,1.5,0.5,0.5,0.5,0.5,0.5,1.0,1.0,1.0,1.0,2.0,1.0,1.0,3.0};
 // Mary had a little lamb
-Note[] actualNotes = {new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('A',null,4),new Note('A',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4)};
-Double[] song2 = {1.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,4.0};
-		
+//Note[] actualNotes = {new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('A',null,4),new Note('A',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4)};
+//Double[] song2 = {1.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,4.0};
+
+    	
+		List<String[]> songData = ReadSongs.read(3);
+		List<Note> actualNotesList = ReadSongs.parseNotes(songData);
+		List<Double> actualDurationsList = ReadSongs.parseNoteLengths(songData);
+		Util.assertBool(actualNotesList.size() == actualDurationsList.size(), "Test file data notes and durations not same size.");
+		Note[] actualNotes = actualNotesList.toArray(new Note[actualNotesList.size()]);
+		Double[] actualDurations = actualDurationsList.toArray(new Double[actualDurationsList.size()]);
+
+
 System.out.println(audioData.getNumFFT());
 System.out.println(audioData.getFftAbsolute().size());
 		List<Note> notes = new ArrayList<Note>();
@@ -887,15 +910,26 @@ System.out.println(audioData.getFftAbsolute().size());
 		
 		for(int i = 0; i < onsets.size(); i++) {
 			Integer onset = onsets.get(i);
-			while(offsetIter.hasNext() && (offset = offsets.get(offsetIter.nextIndex())) < onset) {
+			while(offsetIter.hasNext() && (offset = offsets.get(offsetIter.nextIndex())) <= onset) {
 				offsetIter.next();
 			}
+			
 			// Ensure that offset is not greater than the next onset
 			if(i + 1 < onsets.size() && offset > onsets.get(i + 1)) {
 				Util.verify(false, "Probably matching onsets to offsets is off.");
 			}
+			
+			if(onset.equals(offset)) {
+				Util.verify(false, "P robably matching onsets to offsets is off.");
+			}
 			int freqOnset = Util.firstIndexAbove(corrValuesPerc, onset, offset, 0.025);
 			int noFurther;
+		       //[169, 193, 210, 244, 281, 319, 358, 396, 436, 473, 511, 550, 589, 627, 665, 705, 743, 780, 819, 856, 894, 931, 971, 1011, 1086, 1109, 1126, 1161, 1198, 1237, 1276, 1316, 1355, 1394, 1432, 1468, 1508, 1547, 1584, 1639, 1682, 1698, 1777, 1854, 1890, 1931, 1999, 2009, 2050, 2127, 2149, 2164, 2200, 2239, 2279, 2354, 2378, 2428, 2467, 2508, 2544, 2581, 2617, 2657, 2696, 2738, 2774, 2812, 2854, 2929, 2951, 2966, 3004, 3029, 3083, 3122, 3161, 3198, 3236, 3274, 3311, 3351, 3391, 3427, 3483, 3501, 3527, 3541, 3617, 3643, 3658, 3696, 3734, 3775]
+			//[0, 191, 207, 241, 266, 309, 343, 386, 396, 427, 464, 500, 536, 580, 617, 660, 700, 729, 768, 805, 849, 884, 920, 965, 1002, 1059, 1108, 1126, 1159, 1184, 1227, 1234, 1264, 1304, 1343, 1380, 1418, 1453, 1496, 1543, 1573, 1637, 1679, 1698, 1743, 1852, 1881, 1918, 1969, 2008, 2041, 2113, 2145, 2160, 2193, 2229, 2269, 2343, 2378, 2425, 2458, 2492, 2535, 2572, 2607, 2640, 2686, 2727, 2759, 2800, 2838, 2907, 2951, 2964, 3002, 3025, 3079, 3108, 3152, 3189, 3227, 3263, 3296, 3338, 3379, 3416, 3469, 3498, 3521, 3541, 3584, 3638, 3658, 3691, 3725, 3761, 3801]
+
+			//[169, 193, 210, 244, 281, 319, 358, 396, 436, 473, 511, 550, 589, 627, 665, 705, 743, 780, 819, 856, 894, 931,  971, 1011, 1086, 1109, 1126, 1161, 1198, 1237, 1276, 1316, 1355, 1394, 1432, 1468, 1508, 1547, 1584, 1639, 1682, 1698, 1777, 1854, 1890, 1931, 1999, 2009, 2050, 2127, 2149, 2164, 2200, 2239, 2279, 2354, 2378, 2428, 2467, 2508, 2544, 2581, 2617, 2657, 2696, 2738, 2774, 2812, 2854, 2929, 2951, 2966, 3004, 3029, 3083, 3122, 3161, 3198, 3236, 3274, 3311, 3351, 3391, 3427, 3483, 3501, 3527, 3541, 3617, 3643, 3658, 3696, 3734, 3775]
+			//[191, 207, 241, 266, 309, 343, 386, 427, 464, 500, 536, 580, 617, 660, 700, 729, 768, 805, 849, 884, 920, 965, 1002, 1059, 1108, 1126, 1159, 1184, 1227, 1264, 1304, 1343, 1380, 1418, 1453, 1496, 1543, 1573, 1637, 1679, 1698, 1743, 1852, 1881, 1918, 1969, 2008, 2041, 2113, 2145, 2160, 2193, 2229, 2269, 2343, 2378, 2425, 2458, 2492, 2535, 2572, 2607, 2640, 2686, 2727, 2759, 2800, 2838, 2907, 2951, 2964, 3002, 3025, 3079, 3108, 3152, 3189, 3227, 3263, 3296, 3338, 3379, 3416, 3469, 3498, 3521, 3541, 3584, 3638, 3658, 3691, 3725, 3761, 3801]
+			Util.verify(onsets.get(onsets.size() - 1) < corrValuesPerc.size(), "There is an onset past range");
 			if (i + 1 < onsets.size()) {
 				noFurther = onsets.get(i + 1);
 			} else {
@@ -968,7 +1002,7 @@ System.out.println(audioData.getFftAbsolute().size());
 		for(int i = 0; i < onsets.size(); i++) {
 			Integer onset = onsets.get(i);
 			// TODO ensure that offset is not greater than the next onset
-			while(offsetIter.hasNext() && (offset = offsets.get(offsetIter.nextIndex())) < onset) {
+			while(offsetIter.hasNext() && (offset = offsets.get(offsetIter.nextIndex())) <= onset) {
 				offsetIter.next();
 			}
 			if(i + 1 < onsets.size() && offset > onsets.get(i + 1)) {
@@ -982,6 +1016,7 @@ System.out.println(audioData.getFftAbsolute().size());
 */
 			// index - highest correlated value between onset and offset
 			int maxCorr = Util.maxIndex(corrValuesPerc, onset, offset);
+			Util.verify(maxCorr != -1, "Input to maxIndex is invalid");
 			int base = maxCorr * audioData.getFftLength();
 			int top = base + audioData.getFftLength() / 2;
 			List<Double> subList = audioData.getFftAbsolute().subList(base, top);
@@ -1042,13 +1077,13 @@ System.out.println(audioData.getFftAbsolute().size());
 				System.out.println(i + " bins: " + bins2);
 			}
 			List<Integer> binModes = Util.mode(bins2);
-			Util.verify(binModes.size() == 1, "More than one bin mode. " + bins2 + " modes : " + binModes);
+			Util.logIfFails(binModes.size() == 1, "More than one bin mode. " + bins2 + " modes : " + binModes);
 			fundamentalBins.add(binModes.get(0));
 			
 			preAwesomeNotes.add(atn.getNote(binModes.get(0)).toLowerHarmonic().toLowerHarmonic().toLowerHarmonic());
 			
 			binModes = Util.mode(harmonicBins);
-			Util.verify(binModes.size() == 1, "More than one bin mode harmonic. " + harmonicBins + " modes : " + binModes);
+			Util.logIfFails(binModes.size() == 1, "More than one bin mode harmonic. " + harmonicBins + " modes : " + binModes);
 			firstHarmonicNotes.add(atn.getNote(binModes.get(0)).toLowerHarmonic());
 			
 			
@@ -1106,7 +1141,7 @@ System.out.println(audioData.getFftAbsolute().size());
 		
 //    	System.out.println();
 		
-		Util.compareLists(Arrays.asList(song2), data.noteDurations);
+		Util.compareLists(Arrays.asList(actualDurations), data.noteDurations);
 		System.out.println("notes");
 		Util.compareNotes(notes, Arrays.asList(actualNotes));
 		//System.out.println("originalFrequencies no overlapping");
@@ -1162,6 +1197,18 @@ System.out.println(audioData.getFftAbsolute().size());
 		Util.compareLists(mostFrequentSemitones, actualSemitones);
 		//atn.autoTune();
 		
+		List<Double> easyPeasyFrequencies = new ArrayList<Double>();
+		for(Double i : allFundamentalBins) {
+			easyPeasyFrequencies.add(FrequencyToNote.findFrequency(FundamentalFrequency.computeFrequency((int)(double)i, audioData)));
+		}
+		
+		
+		FindDownBeat fdb = new FindDownBeat(data.noteDurations);
+		fdb.showPossibleDownBeats();
+		//List<PossibleDownBeat> dbeats = fdb.returnPossibleDownBeats();
+		//System.out.println(dbeats);
+		//System.out.println(fdb.getWinner());
+		
     	//TODO get its own graph
 //		updateGraph(fftGraph, audioData.getFrequencies());
 Util.timeDiff("DF");
@@ -1189,12 +1236,24 @@ Util.timeDiff("DF");
 												//fftGraph.updateList(preparePositionsForDisplay(offsets, 4050/*25000*/));
 		    									//fftGraph.update2List(preparePositionsForDisplay(onsets, 4050/*25000*/));
 //		    		fftGraph.update3List(preparePositionsForDisplay(trackedBeats, 5000));
-    		//fftGraph.addList(preparePositionsForDisplay(onsets, 50), "onsets");
+    		fftGraph.addList(preparePositionsForDisplay(atBases, 2300), "atBases");
+    		fftGraph.addList(preparePositionsForDisplay(atPeaks, 2200), "atPeaks");
+    		fftGraph.addList(preparePositionsForDisplay(topIToLeastIs, 1900), "topIToLeastIs");
+    		fftGraph.addList(preparePositionsForDisplay(onsets, 2000), "onsets");
+    		fftGraph.addList(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 2), "amps");
+    		fftGraph.addList(prepareValuesForDisplay(corrValuesPerc, 10000), "correlation");
+    		
     		//fftGraph.addList(preparePositionsForDisplay(offsets, 50), "offsets");
-    		fftGraph.addList(preparePositionsForDisplay(frequencyOnsets, 50), "freq onsets");
-    		fftGraph.addList(preparePositionsForDisplay(frequencyOffsets, 50), "freq offsets");
-		    									fftGraph.addList(prepareValuesForDisplay(corrValuesPerc, 100), "correlation");
-		    									fftGraph.addList(prepareValuesForDisplay(allFundamentalBins, 1), "bins");
+    		
+    		/* Finding Frequencies */
+    		//fftGraph.addList(preparePositionsForDisplay(frequencyOnsets, 2000), "freq onsets");
+    		//fftGraph.addList(preparePositionsForDisplay(frequencyOffsets, 2000), "freq offsets");
+    		//fftGraph.addList(prepareValuesForDisplay(corrValuesPerc, 100), "correlation");
+		 //   fftGraph.addList(prepareValuesForDisplay(allFundamentalBins, 20), "bins");
+    		fftGraph.addList(prepareValuesForDisplay(easyPeasyFrequencies, 1), "bins");
+    		System.out.println("onsets " + onsets);
+    		
+    		
 //		    									fftGraph.updateList(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 1));
 		    		//fftGraph.update3List(prepareValuesForDisplay(onsetAmps2, 4));
       		
