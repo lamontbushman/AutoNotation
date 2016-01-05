@@ -198,6 +198,58 @@ public class DownBeatDetection {
 				}
 				previous = onset;
 			}
+			
+			//TODO make this cleaner
+			// It seems like I play .75 and .25 as .66 and .33 and assume many other people do as well.
+			if(nBeats == 1 && oneBeatsOnsetsSet.size() == 3) {
+				int size = actualLengths.size();
+				Util.verify(lengths.size() == actualLengths.size(), "Lists are not the same size");
+				double firstActual = actualLengths.get(size - 2);
+				double secondActual = actualLengths.get(size - 1);
+				
+				// First two numbers are ordered pairs of what is played.
+				// Second ordered pairs are what is assumed that the player intended to play.
+				final Double[][] possiblePairs = {
+						{0.5,0.5,0.5,0.5},{0.25,0.75,0.25,0.75},{0.75,0.25,0.75,0.25},
+						{1/3.0,2/3.0,0.25,0.75},{2/3.0,1/3.0,0.75,0.25}
+				};
+				
+				double leastError = Double.MAX_VALUE;
+				int leastI = -1;
+				int pairI = 0;
+				for(Double[] pairs : possiblePairs) {
+					double firstError = Math.abs(firstActual - pairs[0]) / pairs[0];
+					double secondError = Math.abs(secondActual - pairs[1]) / pairs[1];
+					double errorSum = firstError + secondError;
+					// TODO there should be hardly any chance of a tie in error.
+					if(errorSum < leastError) {
+						leastI = pairI;
+						leastError = errorSum;
+					} else if(errorSum == leastError) {
+						System.err.println("There were equal errors for a pair of notes.");
+					}
+					pairI++;
+				}
+				
+				double first = lengths.get(size - 2);
+				double second = lengths.get(size -1);
+				
+				Util.verify(leastI != -1, "Finding the least error failed");
+				
+				double firstLeastError = possiblePairs[leastI][2];
+				double secondLeastError = possiblePairs[leastI][3];
+				if(firstLeastError != first || secondLeastError != second) {
+					System.out.println("Fixed note length pairs: actual (" + firstActual + "," + secondActual + ")" +
+							"original (" + first + "," + second + ")" +
+							"corrected (" + firstLeastError + "," + secondLeastError + ")");
+					lengths.set(size - 2, firstLeastError);
+					lengths.set(size - 1, secondLeastError);
+					durationSum = 1;
+				}
+			}
+			
+			
+			
 			// iii. Make sure total fractions are reasonable within nBeats
 			//				1. (add breakpoint for failure testing!)
 			//					a. This probably is a failure in beat detection 

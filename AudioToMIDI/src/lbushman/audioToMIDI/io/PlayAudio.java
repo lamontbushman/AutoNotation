@@ -29,6 +29,9 @@ public class PlayAudio {
 	}
 	
 	public boolean playClip() {
+		this.format = new AudioFormat(format.getSampleRate() * 2, format.getSampleSizeInBits(), format.getChannels(),
+				true, format.isBigEndian());		
+		
 		Clip clip;
 		DataLine.Info info = new DataLine.Info(Clip.class, 
 		    format); // format is an AudioFormat object

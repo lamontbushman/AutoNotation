@@ -455,7 +455,8 @@ Remaining DownBeats
 0:6:8.1:  [0.0, 1.0, 7.0,  0.0, 0.0, 0.0, 0.0, 8.0,  11.0, 0.7272,  1.0]
 1:4:3.0:  [0.0, 0.0, 3.0,  0.0, 0.0, 0.0, 0.0, 3.0,  16.0, 0.1875,  1.0]
 													Failed: 0:4:1.0: 
-													Maybe decrease ratio to 3/21
+													Maybe decrease ratio to 3/21. This is not even being hit because there are more than three posibilities.
+		Actually, can maybe choose the highest score and then decide from there based on ratio or something else.
 Test song: 49 numMeasures: 10.0
 Contains correct down beat 2
 Remaining DownBeats

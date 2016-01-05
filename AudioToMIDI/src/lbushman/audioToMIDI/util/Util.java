@@ -560,18 +560,18 @@ public class Util {
 		System.out.println();
 	}
 	
-	public static <T> void compareLists(List<T> list1, List<T> list2) {
+	public static <T> void compareLists(List<T> list1, List<T> list2, int width) {
 		int size1 = list1.size();
 		int size2 = list2.size();
 		if(size1 != size2) {
-			System.out.println("Lists are not the same size");
+			System.out.println("Lists are not the same size list1: " + list1.size() + " list12: " + list2.size());
 		}
 		int numDifferent = 0;
 		int largest = (size1 > size2)? size1 : size2;
 		for(int i = 0; i < largest; i++) {
 			if( i >= size1 || i>= size2 || !list1.get(i).equals(list2.get(i))) {
 				numDifferent++;
-				System.out.format("%4s ", i);
+				System.out.format("%" + width + "s ", i);
 			} else {
 				System.out.print("     ");
 			}
@@ -579,14 +579,14 @@ public class Util {
 		System.out.println();
 		for(int i = 0; i < size1; i++) {
 			if(i < size2 && list1.get(i).equals(list2.get(i))) {
-				System.out.format(" %3s ", list1.get(i));
+				System.out.format(" %" + (width - 1) + "s ", list1.get(i));
 			} else {
-				System.out.format(" %3s "/*ANSI_CYAN + */, list1.get(i) /*ANSI_RESET + */);
+				System.out.format(" %" + (width - 1) + "s "/*ANSI_CYAN + */, list1.get(i) /*ANSI_RESET + */);
 			}
 		}
 		System.out.println();
 		for(int i = 0; i < size2; i++) {
-			System.out.format(" %3s ", list2.get(i));
+			System.out.format(" %" + (width - 1) + "s ", list2.get(i));
 /*			if(i < size2 && list1.get(i).equals(list2.get(i))) {
 				System.out.print(list2.get(i));
 			} else {

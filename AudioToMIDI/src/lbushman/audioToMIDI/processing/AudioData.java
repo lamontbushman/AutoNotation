@@ -39,6 +39,7 @@ public class AudioData {
 	private BeatDetection bt;
 	private List<Double> overlappedData;
 	private List<double[]> absolute;
+	private List<Double> corrValuesPerc;
 	
 	public AudioData(byte[] samples, AudioFormat audioFormat) {
 		format = audioFormat;
@@ -58,6 +59,34 @@ public class AudioData {
 		format = audioFormat;
 		this.originalSignal = originalSignal;
 		numFFT = null;
+	}
+	
+	public void clearUndesiredData() {
+		format = null;
+		sampledData = null;
+		originalSignal = null;
+		complexData = null;
+		fft = null;
+		fftAbsolute = null;
+		fftLowPassAbsolute = null;
+		frequencies = null;
+		noteNames = null;
+		normalizedFrequencies = null;
+		fftInverseTest = null;
+		autoCorrelationAbsolute = null;
+		numFFT = null;
+		spectralFlux = null;
+		onsets = null;
+		beats = null;
+		beats2 = null;
+		beatsPercent = null;
+		trackedBeats = null;
+		bt = null;
+		overlappedData = null;
+		absolute = null;
+		
+		//corrValuesPerc = null;
+		//amp = null;
 	}
 	
 	private int[] toIntArray(byte[] bites) {
@@ -319,5 +348,13 @@ public class AudioData {
 
 	public List<double[]> getAbsolute() {
 		return absolute;
+	}
+
+	public List<Double> getCorrValuesPerc() {
+		return corrValuesPerc;
+	}
+	
+	public void setCorrValuesPerc(List<Double> percentages) {
+		this.corrValuesPerc = percentages;
 	}
 }

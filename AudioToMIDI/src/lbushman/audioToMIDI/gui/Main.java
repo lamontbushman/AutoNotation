@@ -123,6 +123,7 @@ public class Main extends Application {
 		
 		ps.process();
 		Util.timeDiff("PS");
+		moreProcessing();
 		//TODO why is audioData being passed in?
 		this.audioData = audioData;
 		
@@ -288,12 +289,12 @@ if(false) {
 			}
 		});
         
-        Button frequencyButton = new Button("Show Frequencies");
+        Button frequencyButton = new Button("Recompute");
         frequencyButton.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent arg0) {
-				displayFrequencies();
+				recompute();
 			}
 		});
         
@@ -389,7 +390,312 @@ if(false) {
 		return (int) Math.round(Util.average(modes));
     }
     
-    private void displayFrequencies() {
+    /**
+     * DisplayData
+     * @author lamont
+     *
+     */
+    @SuppressWarnings("rawtypes")
+    class DD {
+		boolean intNotDouble;
+		List data;
+    	String title;
+    	double height;
+    	List<Integer> makeHigher;
+    	public DD(boolean intNotDouble, List data, double height, String title) {
+			this.intNotDouble = intNotDouble;
+			this.data = data;
+			this.title = title;
+			this.height = height;
+		}
+    	
+    	public DD(boolean intNotDouble, List data, String title, double height, List<Integer> makeHigher) {
+			this.intNotDouble = intNotDouble;
+			this.data = data;
+			this.title = title;
+			this.height = height;
+			this.makeHigher = makeHigher;
+		}
+    }
+    
+    private void recompute() {
+    	if(true) {
+    		//http://music.stackexchange.com/questions/25035/does-3-4-time-signature-differ-from-6-8
+	    	//audioData.clearUndesiredData();
+	    	ArrayList<Integer> offsets = new ArrayList<Integer>();
+	    	ArrayList<Integer> onsets = new ArrayList<Integer>();
+	    	detectOnsets(onsets, offsets, true);
+    	} else {
+    		moreProcessing();
+    	}
+    }
+    
+    @SuppressWarnings({ "unchecked" })
+	private void display(boolean doClear, DD... data) {
+    	if(doClear) {
+    		fftGraph.clearAllData();
+    		fftGraph.clearSeries();
+    	}
+    	
+    	for(DD d : data) {
+    		if(d.intNotDouble) {
+    			if(d.makeHigher == null) {
+    				fftGraph.addList(preparePositionsForDisplay(d.data, d.height), d.title);
+    			} else {
+    				fftGraph.addList(preparePositionsForDisplay(d.data, d.height, d.makeHigher), d.title);
+    			}
+    		} else {
+    			fftGraph.addList(prepareValuesForDisplay(d.data, d.height), d.title);
+    		}
+    	}
+    	
+/*    	fftGraph.addList(preparePositionsForDisplay(atBases, 2300), "atBases");
+    	fftGraph.addList(preparePositionsForDisplay(atPeaks, 2200), "atPeaks");
+    	fftGraph.addList(preparePositionsForDisplay(topIToLeastIs, 1900), "topIToLeastIs");
+    	fftGraph.addList(preparePositionsForDisplay(onsets, 2000), "onsets");
+    	fftGraph.addList(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 2), "amps");
+    	fftGraph.addList(prepareValuesForDisplay(corrValuesPerc, 10000), "correlation");*/
+    }
+    
+    private void detectOnsets(List<Integer> onsets, List<Integer> offsets, boolean doDisplay) {
+    	List<Double> corrValuesPerc = audioData.getCorrValuesPerc();
+    	//ONSETS   	
+    	ArrayList<Integer> atBases = new ArrayList<Integer>();
+    	ArrayList<Integer> atPeaks = new ArrayList<Integer>();
+    	ArrayList<Integer> topIToLeastIs = new ArrayList<Integer>();
+    	boolean atBase = false;
+    	boolean atPeak = false;
+    	double baseV = 0;
+    	double topV = 0/*Double.MAX_VALUE*/;
+    	int topI = 0;
+    	
+    	int onsetI = 0;
+    	double onsetV = 0;
+    	
+    	double leastV = Double.MAX_VALUE;
+    	int leastI = 0;
+    	List<Double> values = new ArrayList<Double>();
+    	double topAmpV = 0;
+    	int topAmpI = 0;
+   	
+    	List<Double> ampsList = Arrays.asList(audioData.getAmp());
+    	for(int i = 0; i < corrValuesPerc.size(); i++) {
+    		double perc = corrValuesPerc.get(i);
+    		// TODO probably switch to old numbers (maybe not, extra numbers might be needed???), but now include a rule that the highest in the range must be so much higher than the lowest found in the (first half of the) range. 
+    		// Found bottom
+    		if(perc < /*0.017*/ 0.018/*0.04*/ ) { //(absolute min (0.009 0.008 too low)  .018 getting a little scary to be cutting into a peak.  At one point gives 2 .017 - 0.020 a decent number for matching amp peak.
+    			if(atBase == false) {
+    				atBases.add(i);
+    //onsets.add(topI);
+//onsets.add(leastI);
+	//onsets.add(i); // beginning of peak
+    				//onsets.add(topAmpI);
+    				//onsets.add(onsetI);
+    				Util.verify(topI >= leastI, "topI <= leastI");
+    				boolean justAdded = false;
+    				for(int beg = topI; beg >= leastI; beg--) {
+    					topIToLeastIs.add(beg);
+    					if(corrValuesPerc.get(beg) <= 0.019) {
+    						offsets.add(i); //TODO LDB NOW
+    						onsets.add(beg);
+    						justAdded = true;
+    						break;
+    					}
+    				}
+    				
+    				
+						//didn't work this i and topI are not matching lower and greater indexes. onsets.add(Util.maxIndex(ampsList, i, topI + 1/* makes inclusive */)); 
+
+			
+    				baseV = perc;
+    //				if((topV - baseV) / baseV);
+    				//System.out.println(topV - leastV);
+    				values.add(topV - leastV);
+    				
+    				
+    				
+    				
+    				/*if(topV - baseV < 0.015  0.017     0.0118  0.0089) {
+    					System.out.println("removed one: " + onsets.get(onsets.size() -1) + " leastValue: " + leastV + " topV: " + topV);
+    					onsets.remove(onsets.size() -1);
+    				}*/
+    		//TODO LDB put back NOW
+/*    				
+    				if(justAdded && topV - leastV < 0.020) {
+    					System.out.println("removed one: " + onsets.get(onsets.size() -1) + " leastValue: " + leastV + " topV: " + topV + " diff: " + (topV - leastV));
+    					offsets.remove(offsets.size() - 1); //TODO LDB NOW
+    					onsets.remove(onsets.size() -1);
+    				}
+*/
+    				
+    				topAmpV = 0;
+    				topV = 0;
+    				onsetV = 0;
+    				leastV = perc; // start off new peak with current value
+    				
+    				// System.out.println("    " + baseV);
+    			} else {
+    				// System.out.println(baseV);
+    			}
+    			atBase = true;
+    			atPeak = false;
+    		} else if (perc > /*0.025*/0.026) {//maybe lower a little // Found  a definite peak (.030 highest (.031 too high)) 0.020 too low, 0.025 highest I'd like to be comfortable with.
+    			if(atPeak == false) {
+//    				onsets.add(i); // bottom of peak
+    				//System.out.println("    				" + perc);
+    			} else {
+    				//System.out.println("    			" + perc);
+    			}
+    			
+
+    			atPeaks.add(i);
+    			atPeak = true;
+    			atBase = false;
+    		} else {
+    			// in middle ground
+    		}
+    		
+			if(atPeak && perc >= topV) {
+				topV = perc;
+				topI = i;
+			}
+			
+			if(atBase && perc <= leastV) {
+				leastV = perc;
+				leastI = i;
+			}
+			
+			double amp = ampsList.get(i);
+			if(amp > topAmpV) {
+				topAmpV = amp;
+				topAmpI = i;
+			}
+			
+			if(perc > 0.019 && onsetV == 0) {
+				onsetV = perc;
+				onsetI = i;
+			}
+    	}
+    	
+    	values.sort(new Comparator<Double>() {
+			@Override
+			public int compare(Double o1, Double o2) {
+				return o1.compareTo(o2);
+			}
+		});
+    	System.out.println(values);
+    	
+    	List<Integer> attacks = new ArrayList<Integer>();
+    	List<Integer> newOnsets = new ArrayList<Integer>();
+    	List<Integer> newOffsets = new ArrayList<Integer>();
+    	int foundAttackPos = -1;
+    	int lastAttackRecognized = -1;
+    	final int numAhead = 4;
+    	final double percGreater = 2;
+    	boolean foundOffset = false;
+    	int offset = -1;
+    	boolean lookForOffset = false;
+    	
+    	double onsetValue = 0.019;
+    	for(int i = 0; i < corrValuesPerc.size(); i++) {
+    		double perc = corrValuesPerc.get(i);
+    		if(i + numAhead < corrValuesPerc.size()) {
+    			double ahead = corrValuesPerc.get(i + numAhead);
+    			if((ahead - perc) / perc > percGreater) {
+    				attacks.add(i + numAhead);
+    				lastAttackRecognized = i + numAhead;
+    				if(lookForOffset) {
+    					newOffsets.add(offset);
+    					lookForOffset = false;
+    				}
+    				// the first of a successive of note attacks
+    				if(foundAttackPos == -1) {
+    					foundAttackPos = i;
+    				}
+    			} else {
+    				if(foundAttackPos != -1) {
+    					boolean didAdd = false;
+    					/*for(int j = foundAttackPos + 1; j < i + numAhead; j++) {*/
+    					for(int j = lastAttackRecognized; j >= foundAttackPos; j--) {
+    						if(corrValuesPerc.get(j) <= onsetValue) {
+    							newOnsets.add(j);
+    							lookForOffset = true;
+    							
+    		    				if(foundOffset) {
+    		    					
+    		    					foundOffset = false;
+    		    				}
+    		    				didAdd = true;
+    							break;
+    						}
+    					}
+    					if(!didAdd) {
+    						System.out.println("Missed: " + foundAttackPos);
+    						newOnsets.add(foundAttackPos);
+    						lookForOffset = true;
+    					}
+    					
+    				}
+    				
+					if(lookForOffset && perc > /*0.017*/ 0.018/*0.04*/ ) {
+						offset = i;
+						foundOffset = true;
+					}
+    				foundAttackPos = -1;
+    				//if(!foundOffset) {
+    					
+    				//}
+    			}
+    		}
+    	}
+    	newOffsets.add(offset);
+    	
+/*    	for(int i = 0; i < corrValuesPerc.size(); i++) {
+    		double perc = corrValuesPerc.get(i);
+    		if(i + numAhead < corrValuesPerc.size()) {
+    			double ahead = corrValuesPerc.get(i + numAhead);
+    			if((ahead - perc) / perc > percGreater) {
+    				attacks.add(i);
+    			}
+    		}
+    	}
+    	*/
+    	
+    	
+    	// Remove the first one, which should be at/near the beginning. TODO LDB NOW beware of removing above
+    	onsets.remove(0);
+    	offsets.remove(0);
+    	
+    	if(doDisplay) {
+    		System.out.println("Onsets: " + onsets);
+    		// For hymn 2.
+    		Integer[] correctOnsets = {553, 595, 674, 716, 757, 835, 875, 917, 997, 1036, 1076, 1138, 1157, 1194, 1235, 1275, 1314, 1355, 1395, 1435, 1476, 1516, 1558, 1595, 1634, 1674, 1718, 1834, 1875, 1956, 1995, 2036, 2113, 2154, 2199, 2278, 2316, 2358, 2418, 2436, 2475, 2515, 2555, 2595, 2635, 2676, 2715, 2756, 2799, 2840, 2881, 2917, 2957, 2998, 3115, 3157, 3234, 3276, 3318, 3397, 3438, 3478, 3518, 3555, 3596, 3640, 3679, 3717, 3739, 3756, 3775, 3798, 3876, 3916, 3958, 4037, 4077, 4118, 4195, 4254, 4276, 4393, 4436, 4476, 4517, 4557, 4599, 4677, 4718, 4758, 4816, 4835, 4876, 4917, 4957, 4994, 5012, 5028, 5047, 5077, 5136, 5155, 5174, 5194, 5215, 5237, 5274, 5316, 5356, 5396, 5475, 5516, 5558};
+    		Util.compareLists(newOnsets, onsets/*Arrays.asList(correctOnsets)*/, 5);
+        	display(true,
+        			new DD(true, onsets, 2000, "onsets"),
+        			new DD(false, corrValuesPerc, 10000, "percentages"),
+        			new DD(true, attacks, 2200, "attacks"),
+        			new DD(false, Arrays.asList(audioData.getAmp()), 1, "amps"),
+        			new DD(true, newOnsets, 2300, "new onsets"),
+        			new DD(true, newOffsets, 2400, "new offsets"),
+        			new DD(true, offsets, 2500, "offsets")
+        	
+        	
+        			//new DD(true, atBases, 2300, "atBases"),
+        			//new DD(true, atPeaks, 2200, "atPeaks"),
+        			//new DD(true, topIToLeastIs, 1900, "topIToLeastIs"),
+        			
+        			//new DD(true, Arrays.asList(correctOnsets), 2400, "correctOnsets")
+        	);
+    	}
+       	System.out.println(onsets.size() + " " + newOnsets.size() + " " + offsets.size() + " " + newOffsets.size());
+    	onsets.clear();
+    	onsets.addAll(newOnsets);
+    	offsets.clear();
+    	offsets.addAll(newOffsets);
+    }
+    
+    private void moreProcessing() {
     	Util.timeDiff("DF");
     	List<Double> ffts = audioData.getFftAbsolute();
     	int fftLen = audioData.getFftLength();
@@ -583,138 +889,10 @@ if(false) {
     	[-0.0031216500447718747, 0.011708984175072401, 0.014185809666414742, 0.01631187482038257, 0.018672953800970615, 0.020502533689564135, 0.022042370851026408, 0.023920198033373558, 0.024362381329691117, 0.025133889869362575, 0.02897203428733229, 0.031468202575217534, 0.03174206666227823, 0.031788275104681726, 0.03254362039123506, 0.03289635209100222, 0.03300398354643061, 0.03306811998824443, 0.033088979988583594, 0.03421609226248243, 0.03471173741684021, 0.03494827866779151, 0.03549081349922573, 0.03560146807605591, 0.03562614400733803, 0.035885244116674986, 0.03649254893419563, 0.03663896862134829, 0.0368666553076343, 0.03767511986476015, 0.03789553025393591, 0.038084178547641595, 0.03826187011145257, 0.038294791031407635, 0.03845488396226728, 0.03927871880010179, 0.039456834910201154, 0.039671022810335604, 0.0400621956160165, 0.04011223687500827, 0.04011719339434992, 0.04108691441582478, 0.04240746112755935, 0.042707003742932154, 0.04283500001828877, 0.04290762036750395, 0.043460516789511155, 0.043743362128466357, 0.04376286870958954, 0.044783818867611645, 0.045729879234574, 0.04581761311069273, 0.04605529760110366, 0.046748054246655305, 0.04695902668230029, 0.047536200245742614, 0.04753649732524676, 0.04759330515922378, 0.04767657076782517, 0.048008320695765924, 0.0482799348660148, 0.048405542650331014, 0.048613972486595755, 0.049348545476377556, 0.05043273274311001, 0.05075435861902375, 0.050884537954736034, 0.05093007129911879, 0.051318637848776064, 0.05162828392261099, 0.051692420270454426, 0.0520038470633888, 0.05207193646420752, 0.052782888672860094, 0.05293968360929065, 0.053037915188431733, 0.05306023793389813, 0.053633635539373795, 0.053785315224804224, 0.054357196176888486, 0.0544718110562612, 0.054516014101579385, 0.0549438808651312, 0.05510576958104394, 0.05517381387494223, 0.05520396260099003, 0.055229601949643034, 0.05552984971498214, 0.05557827515771525, 0.05559656529701969, 0.05573817472263393, 0.056542512212475124, 0.05712675201040497, 0.057129812243012466, 0.057260291927543776, 0.057391771935585034, 0.05762441227732354, 0.057656681723718926, 0.05830651420807385, 0.05832651497700895, 0.05847409747059209, 0.05876083491776282, 0.05913788478239463, 0.06043669507908729, 0.0610006700448217, 0.062493867242743896, 0.06368594189162534, 0.06421148713859601, 0.06434269433991802, 0.06529461959638169, 0.06892129247101039, 0.06895780231864514, 0.07062812627214542, 0.07084327132307124, 0.07179288059058102, 0.07384647475455386]
 
 */
-    	
-//ONSETS   	
     	ArrayList<Integer> offsets = new ArrayList<Integer>();
     	ArrayList<Integer> onsets = new ArrayList<Integer>();
-    	ArrayList<Integer> atBases = new ArrayList<Integer>();
-    	ArrayList<Integer> atPeaks = new ArrayList<Integer>();
-    	ArrayList<Integer> topIToLeastIs = new ArrayList<Integer>();
-    	boolean atBase = false;
-    	boolean atPeak = false;
-    	double baseV = 0;
-    	double topV = 0/*Double.MAX_VALUE*/;
-    	int topI = 0;
-    	
-    	int onsetI = 0;
-    	double onsetV = 0;
-    	
-    	double leastV = Double.MAX_VALUE;
-    	int leastI = 0;
-    	List<Double> values = new ArrayList<Double>();
-    	double topAmpV = 0;
-    	int topAmpI = 0;
-   	
-    	List<Double> ampsList = Arrays.asList(audioData.getAmp());
-    	for(int i = 0; i < corrValuesPerc.size(); i++) {
-    		double perc = corrValuesPerc.get(i);
-    		// TODO probably switch to old numbers (maybe not, extra numbers might be needed???), but now include a rule that the highest in the range must be so much higher than the lowest found in the (first half of the) range. 
-    		// Found bottom
-    		if(perc < /*0.017*/ 0.018/*0.04*/ ) { //(absolute min (0.009 0.008 too low)  .018 getting a little scary to be cutting into a peak.  At one point gives 2 .017 - 0.020 a decent number for matching amp peak.
-    			if(atBase == false) {
-    				atBases.add(i);
-    //onsets.add(topI);
-//onsets.add(leastI);
-	//onsets.add(i); // beginning of peak
-    				//onsets.add(topAmpI);
-    				//onsets.add(onsetI);
-    				Util.verify(topI >= leastI, "topI <= leastI");
-    				boolean justAdded = false;
-    				for(int beg = topI; beg >= leastI; beg--) {
-    					topIToLeastIs.add(beg);
-    					if(corrValuesPerc.get(beg) <= 0.019) {
-    						offsets.add(i); //TODO LDB NOW
-    						onsets.add(beg);
-    						justAdded = true;
-    						break;
-    					}
-    				}
-    				
-    				
-						//didn't work this i and topI are not matching lower and greater indexes. onsets.add(Util.maxIndex(ampsList, i, topI + 1/* makes inclusive */)); 
-
-			
-    				baseV = perc;
-    //				if((topV - baseV) / baseV);
-    				System.out.println(topV - leastV);
-    				values.add(topV - leastV);
-    				
-    				
-    				
-    				
-    				/*if(topV - baseV < 0.015  0.017     0.0118  0.0089) {
-    					System.out.println("removed one: " + onsets.get(onsets.size() -1) + " leastValue: " + leastV + " topV: " + topV);
-    					onsets.remove(onsets.size() -1);
-    				}*/
-    		//TODO LDB put back NOW
-/*    				
-    				if(justAdded && topV - leastV < 0.020) {
-    					System.out.println("removed one: " + onsets.get(onsets.size() -1) + " leastValue: " + leastV + " topV: " + topV + " diff: " + (topV - leastV));
-    					offsets.remove(offsets.size() - 1); //TODO LDB NOW
-    					onsets.remove(onsets.size() -1);
-    				}
-*/
-    				
-    				topAmpV = 0;
-    				topV = 0;
-    				onsetV = 0;
-    				leastV = perc; // start off new peak with current value
-    				
-    				// System.out.println("    " + baseV);
-    			} else {
-    				// System.out.println(baseV);
-    			}
-    			atBase = true;
-    			atPeak = false;
-    		} else if (perc > /*0.025*/0.026) {//maybe lower a little // Found  a definite peak (.030 highest (.031 too high)) 0.020 too low, 0.025 highest I'd like to be comfortable with.
-    			if(atPeak == false) {
-//    				onsets.add(i); // bottom of peak
-    				//System.out.println("    				" + perc);
-    			} else {
-    				//System.out.println("    			" + perc);
-    			}
-    			
-
-    			atPeaks.add(i);
-    			atPeak = true;
-    			atBase = false;
-    		} else {
-    			// in middle ground
-    		}
-    		
-			if(atPeak && perc >= topV) {
-				topV = perc;
-				topI = i;
-			}
-			
-			if(atBase && perc <= leastV) {
-				leastV = perc;
-				leastI = i;
-			}
-			
-			double amp = ampsList.get(i);
-			if(amp > topAmpV) {
-				topAmpV = amp;
-				topAmpI = i;
-			}
-			
-			if(perc > 0.019 && onsetV == 0) {
-				onsetV = perc;
-				onsetI = i;
-			}
-    	}
-    	
-    	values.sort(new Comparator<Double>() {
-			@Override
-			public int compare(Double o1, Double o2) {
-				return o1.compareTo(o2);
-			}
-		});
-    	System.out.println(values);
-    	
-    	// Remove the first one, which should be at/near the beginning. TODO LDB NOW beware of removing above
-    	onsets.remove(0);
-    	offsets.remove(0);
+    	audioData.setCorrValuesPerc(corrValuesPerc);
+    	detectOnsets(onsets, offsets, false);
 
     	ListIterator<Integer> pOLIter = onsets.listIterator();
 												if(false) {
@@ -864,15 +1042,12 @@ if(false) {
 			
 */
 //NOTES
-//The Spirit of God 
-//Note[] actualNotes = {new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('F',null,4),new Note('E',false,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('F',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('B',false,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('F',null,4),new Note('D',null,4),new Note('F',null,4),new Note('B',false,4),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('A',null,4),new Note('B',false,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('C',null,5),new Note('C',null,5),new Note('D',null,5),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('F',null,4),new Note('G',null,4),new Note('A',null,4),new Note('F',null,4),new Note('B',false,4),new Note('C',null,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('G',null,4),new Note('E',false,5),new Note('D',null,5),new Note('C',null,5),new Note('B',false,4),new Note('A',null,4),new Note('A',null,4),new Note('B',false,4)};
-//Double[] actualDurations = {1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.5,0.5,3.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,1.5,0.5,1.0,1.0,1.0,1.0,0.5,0.5,0.5,0.5,1.5,0.5,0.5,0.5,0.5,0.5,1.0,1.0,1.0,1.0,2.0,1.0,1.0,3.0};
 // Mary had a little lamb
 //Note[] actualNotes = {new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('A',null,4),new Note('A',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4)};
 //Double[] song2 = {1.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,4.0};
 
     	
-		List<String[]> songData = ReadSongs.read(3);
+		List<String[]> songData = ReadSongs.read(2);
 		List<Note> actualNotesList = ReadSongs.parseNotes(songData);
 		List<Double> actualDurationsList = ReadSongs.parseNoteLengths(songData);
 		Util.assertBool(actualNotesList.size() == actualDurationsList.size(), "Test file data notes and durations not same size.");
@@ -962,10 +1137,56 @@ System.out.println(audioData.getFftAbsolute().size());
 			/*if(i == 22 || i == 21) {
 				System.out.println(i + " bins: " + bins);
 			}*/
+			
+			final double harmonicBinErrorAllowance = 0.045;
+			final double binErrorAllowance = 0.045;
+			final double harmonicPercAllowance = 0.20;
 			for(int harmonicI = 0; harmonicI < numHarmonics; harmonicI++) {
 				List<Integer> binModes = Util.mode(tempBins.get(harmonicI));
-				Util.logIfFails(binModes.size() == 1, "More than one bin mode. " + tempBins.get(harmonicI) + " modes : " + binModes);
-				bins.get(harmonicI).add(binModes.get(0));
+				Util.logIfFails(binModes.size() == 1 && binModes.size() != 2, "More than two bin modes. " + tempBins.get(harmonicI) + " modes : " + binModes);
+				int bin = binModes.get(0);
+				if(i == 22/*i == 44 || i == 49 || i == 82 || i == 107*/) {
+					System.out.println("break");
+				}
+				if(i == 43 || i == 79 || i == 89 ) {
+					System.out.println("break");
+				}
+				if(binModes.size() == 2) {
+					int smaller = (bin < binModes.get(1))? bin : binModes.get(1);
+					int larger = (bin > binModes.get(1))? bin : binModes.get(1);
+					int smallerTwice = smaller * 2;
+					if(Math.abs(larger - smallerTwice) / (double) larger < harmonicBinErrorAllowance) {
+						bin = smaller;
+					} else if(Math.abs(larger - smaller) / (double) larger < harmonicBinErrorAllowance){
+						//bin = (int) Math.round(Util.average(binModes));
+					} else {
+						Util.logIfFails(false, "Two bin modes and not harmonics. " + tempBins.get(harmonicI) + " modes : " + binModes);
+					}
+				} else if(binModes.size() == 1) {
+					int mode = binModes.get(0);
+					List<Integer> harmonicsSmaller = new ArrayList<Integer>();
+					List<Integer> binsCloseToMode = new ArrayList<Integer>();
+					int count = 0;
+					for(Integer binI : tempBins.get(harmonicI)) {
+						int binTwice = binI * 2;
+						//only count the first half of the range. The fundamental is heard at the beginning.
+						// sometimes a non fundamental shows up at the later end of the range.
+						if(count / (double) tempBins.get(harmonicI).size() < .20 && Math.abs(mode - binTwice) /(double) mode < harmonicBinErrorAllowance) {
+							harmonicsSmaller.add(binI);
+						}
+						if(Math.abs(mode - binI) / (double) mode < binErrorAllowance) {
+							binsCloseToMode.add(binI);
+						}
+						count++;
+					}
+					if(harmonicsSmaller.size() / (double) binsCloseToMode.size() >= harmonicPercAllowance) {
+						System.out.println("Fixed not finding fundamental @ " + i);
+						bin = (int) Math.round(Util.average(harmonicsSmaller)); // TODO print fix
+					} // TODO else average binsCloseToMode add change to double
+				}
+				
+				
+				bins.get(harmonicI).add(bin);
 				//fundamentalBins.add(binModes.get(0));
 				//preAwesomeNotes.add(atn.getNote(binModes.get(0)));
 			}
@@ -1141,7 +1362,7 @@ System.out.println(audioData.getFftAbsolute().size());
 		
 //    	System.out.println();
 		
-		Util.compareLists(Arrays.asList(actualDurations), data.noteDurations);
+		Util.compareLists(Arrays.asList(actualDurations), data.noteDurations, 4);
 		System.out.println("notes");
 		Util.compareNotes(notes, Arrays.asList(actualNotes));
 		//System.out.println("originalFrequencies no overlapping");
@@ -1169,7 +1390,7 @@ System.out.println(audioData.getFftAbsolute().size());
 		}
 			
 		System.out.println("awesomeSemitones");
-		Util.compareLists(FindFrequency.semitones, actualSemitones);
+		Util.compareLists(FindFrequency.semitones, actualSemitones, 4);
 		System.out.println(Arrays.asList(actualNotes));
 /*	
 		FindFrequency.semitones.clear();
@@ -1178,7 +1399,7 @@ System.out.println(audioData.getFftAbsolute().size());
 		Util.compareNotes(morePreciseBinNotes, Arrays.asList(actualNotes));
 		
 */		System.out.println("morePreciseSemitones");
-		Util.compareLists(FindFrequency.semitones, actualSemitones);
+		Util.compareLists(FindFrequency.semitones, actualSemitones, 4);
 		System.out.println(Arrays.asList(actualNotes));
 		
 		System.out.println("preAwesomeNotes");
@@ -1194,17 +1415,31 @@ System.out.println(audioData.getFftAbsolute().size());
 		}
 		
 		System.out.println("mostFrequentSemitones");
-		Util.compareLists(mostFrequentSemitones, actualSemitones);
+		Util.compareLists(mostFrequentSemitones, actualSemitones, 4);
 		//atn.autoTune();
 		
-		List<Double> easyPeasyFrequencies = new ArrayList<Double>();
+/*		List<Double> easyPeasyFrequencies = new ArrayList<Double>();
 		for(Double i : allFundamentalBins) {
 			easyPeasyFrequencies.add(FrequencyToNote.findFrequency(FundamentalFrequency.computeFrequency((int)(double)i, audioData)));
-		}
+		}*/
 		
 		
 		FindDownBeat fdb = new FindDownBeat(data.noteDurations);
 		fdb.showPossibleDownBeats();
+		PossibleDownBeat pdb = fdb.getWinner();
+		
+		double numOfBeats = Util.sum(data.noteDurations);
+		int numOfCurrentlyFullMeasures = (int) (numOfBeats / pdb.getLength());
+		double numRemaining = ((numOfCurrentlyFullMeasures + 1) * pdb.getLength()) - numOfBeats;
+		if(numRemaining > 0) {
+			data.noteDurations.add(numRemaining);
+		} else {
+			Util.verify(false, "Wasn't able to add last duration.");
+		}
+		System.out.println("Added last duration");
+		Util.compareLists(Arrays.asList(actualDurations), data.noteDurations, 4);
+		
+		
 		//List<PossibleDownBeat> dbeats = fdb.returnPossibleDownBeats();
 		//System.out.println(dbeats);
 		//System.out.println(fdb.getWinner());
@@ -1216,15 +1451,17 @@ Util.timeDiff("DF");
 		fftGraph.clearData2();
 		fftGraph.clearData3();*/
 
-		fftGraph.clearAllData();
-		fftGraph.clearSeries();
+		
 		
 /*		for(double freq : freqs) {
 			System.out.print(FrequencyToNote.findNote(freq) + " ");
 		}
 		System.out.println();*/
 		
-    	if(true) {
+    	if(false) {
+    		fftGraph.clearAllData();
+    		fftGraph.clearSeries();
+    		
 //    		updateGraph(fftGraph, oneFft);
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 70)));
     		//updateGraph(fftGraph, Arrays.asList(prepareValuesForDisplay(freqs/*audioData.getNormalizedFrequencies()*/, 0.01)));
@@ -1236,10 +1473,7 @@ Util.timeDiff("DF");
 												//fftGraph.updateList(preparePositionsForDisplay(offsets, 4050/*25000*/));
 		    									//fftGraph.update2List(preparePositionsForDisplay(onsets, 4050/*25000*/));
 //		    		fftGraph.update3List(preparePositionsForDisplay(trackedBeats, 5000));
-    		fftGraph.addList(preparePositionsForDisplay(atBases, 2300), "atBases");
-    		fftGraph.addList(preparePositionsForDisplay(atPeaks, 2200), "atPeaks");
-    		fftGraph.addList(preparePositionsForDisplay(topIToLeastIs, 1900), "topIToLeastIs");
-    		fftGraph.addList(preparePositionsForDisplay(onsets, 2000), "onsets");
+
     		fftGraph.addList(prepareValuesForDisplay(Arrays.asList(audioData.getAmp()), 2), "amps");
     		fftGraph.addList(prepareValuesForDisplay(corrValuesPerc, 10000), "correlation");
     		
@@ -1250,7 +1484,7 @@ Util.timeDiff("DF");
     		//fftGraph.addList(preparePositionsForDisplay(frequencyOffsets, 2000), "freq offsets");
     		//fftGraph.addList(prepareValuesForDisplay(corrValuesPerc, 100), "correlation");
 		 //   fftGraph.addList(prepareValuesForDisplay(allFundamentalBins, 20), "bins");
-    		fftGraph.addList(prepareValuesForDisplay(easyPeasyFrequencies, 1), "bins");
+    	//	fftGraph.addList(prepareValuesForDisplay(easyPeasyFrequencies, 1), "bins");
     		System.out.println("onsets " + onsets);
     		
     		
@@ -1263,11 +1497,11 @@ Util.timeDiff("DF");
 //			fftGraph.update2List(prepareValuesForDisplay(audioData.getNormalizedFrequencies(), 15));
 		    								//	fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 150/*150000*/));
 			//fftGraph.update3List(prepareValuesForDisplay(corrValuesPerc, 15000000));
-    	} else {
+    	} /*else {
     		fftGraph.clearData();
     		fftGraph.clearData2();
     		fftGraph.clearData3();
-    	}
+    	}*/
     	//fftGraph.clearData();
     	
 if(true) {
@@ -1482,7 +1716,7 @@ if(true) {
 		return graph;
     }
     
-    private Double[] preparePositionsForDisplay(List<Integer> positions, double height) {
+    private Double[] preparePositionsForDisplay(List<Integer> positions, double height, List<Integer> makeHigher) {
     	if(positions.isEmpty()) {
     		return null;
     	}
@@ -1503,16 +1737,22 @@ if(true) {
 		for(int i = 0; i < graph.length; i++) {
 			graph[i] = 0.0;
 		}
-		List<Integer> makeHigher = Arrays.asList(4,17,22,30,31,44,49,73,82,85,90,91,101,102,107);
+		
+		//List<Integer> makeHigher = Arrays.asList(4,17,22,30,31,44,49,73,82,85,90,91,101,102,107);
+		boolean canMakeHigher = makeHigher != null && !makeHigher.isEmpty();
 		int count = 0;
 		for(Integer i : positions) {
 			graph[i] = height;
-			if(makeHigher.contains(count))
+			if(canMakeHigher && makeHigher.contains(count))
 				graph[i] = height * 1.25;
 			count++;
 		}
-
+		
 		return graph;
+    }
+    
+    private Double[] preparePositionsForDisplay(List<Integer> positions, double height) {
+    	return preparePositionsForDisplay(positions, height, null);
     }
     
     private void displayFFt(int n, final List<Double> absoluteData) {
