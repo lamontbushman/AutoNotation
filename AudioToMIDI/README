@@ -1,0 +1,10 @@
+To run:
+java -jar audioToText.jar
+
+You have to modify the "Open" field to enable the button.
+And type *.wav in the field. The *.wav file must exist in this folder.
+
+Same naming convention requirements, goes for the capture field.
+Be careful of writing over existing files via capture.
+
+They are not really .wav files. Close, but without the metadata.
