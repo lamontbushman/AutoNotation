@@ -487,6 +487,33 @@ if(false) {
     	
     	return onsetAmps;
     }
+    
+    private static boolean isPossNoteLen(Integer diff, int beatDifference) {
+    	final double errorAllowance = 0.15;
+    	double length = diff / (double) beatDifference;
+    	//Double[] possibleLengths = {0.25,0.50,0.75,1.0,2.0,3.0,4.0};
+    	final double maxPossLen = 4;
+    	if(length > maxPossLen && Math.abs(maxPossLen - length) / (double) maxPossLen > errorAllowance) {
+    		return false;
+    	}
+    	return true;
+    	/*long count = Arrays.asList(possibleLengths).stream().
+    			filter(pLen -> (Math.abs(pLen - length) / (double) pLen <= errorAllowance)? 
+    					true : false).count();
+    	Util.verify(count < 2, "Error for checking possible note length");
+    	return (count == 1);
+*/    }
+    
+	private static int validateBeatDifference(List<Integer> onsets, int beatDifference) {
+		List<Integer> diffs = Util.diffList(onsets);
+		int diff = beatDifference;
+		long count = diffs.stream().filter(i -> !(isPossNoteLen(i, diff))).count();
+		if(count / (double) diffs.size() >= .05) {
+			System.out.println("in valid beat difference: trying twice as much");
+			beatDifference *= 2;
+		}
+		return beatDifference;
+	}
 
     /**
      * Assumes that the first onset is a whole note. Fails horribly if it isn't.
@@ -495,6 +522,9 @@ if(false) {
      * @return
      */
 	public static List<Integer> beatTracker(List<Integer> onsets, int beatDifference) {
+		//beatDifference = validateBeatDifference(onsets, beatDifference);
+		
+		
 		final double PERCENT_OFF_ALLOWANCE = 0.201;//0.28572;//0.19;//1.125;
 		
 		if(onsets.isEmpty())
@@ -739,7 +769,7 @@ if(false) {
 		return sortedBeats;
 	}
 
-	   /**
+	/**
      * Assumes that the first onset is a whole note. FainextOnset = onsetSet.higher(nextOnset);ls horribly if it isn't.
      * @param onsets
      * @param beatDifference
@@ -987,7 +1017,8 @@ if(false) {
 	 * Finds the original index of a signal based on the fftLength and the overlapPercentage.
 	 * Make sure returned value is within the range of the original signal before indexing into it.
 	 */
-	private int findOriginalIndex(int index) {		
+	public int findOriginalIndex(int index) {		
+		index *= fftLength;
 		// The index into an original FFT length sized portion
 		int baseIndex = index / wholeFinished;
 		baseIndex = baseIndex * fftLength;
@@ -1021,8 +1052,8 @@ if(false) {
 	 * @return
 	 */
 	public Note calculateNote(int fftIndex1, int fftIndex2, List<Integer> continualBins) {
-		int fromIndex = findOriginalIndex(fftIndex1 * fftLength);
-		int toIndex = findOriginalIndex(fftIndex2 * fftLength);
+		int fromIndex = findOriginalIndex(fftIndex1);
+		int toIndex = findOriginalIndex(fftIndex2);
 		
 		int[] signal = Arrays.copyOfRange(data.getOriginalSignal(), fromIndex, toIndex);
 		// Warning don't change Format.
@@ -1058,8 +1089,8 @@ if(false) {
 	public Double[] compute1FftOnOriginalSignal(int overlapFromIndex, int overlapToIndex) {
 		System.out.println(data.getOriginalSignal().length);
 		System.out.println(signal.length);
-		int fromIndex = findOriginalIndex(overlapFromIndex * fftLength);
-		int toIndex = findOriginalIndex(overlapToIndex * fftLength);
+		int fromIndex = findOriginalIndex(overlapFromIndex);
+		int toIndex = findOriginalIndex(overlapToIndex);
 		int newfftLength = toIndex - fromIndex;
 		// Am I sure that I want to do the ceiling. I think I want to do the floor.
 		newfftLength = Util.floorBase2(newfftLength);

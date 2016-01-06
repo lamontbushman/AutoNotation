@@ -89,6 +89,10 @@ public class FindFrequency {
 		
 		// A potential peak whose index 1.5 times of the maximum peak.
 		maxIPlusHalf = Util.maxIndex(fft, Math.max(0,maxIPlusHalf - searchLen), Math.min(fft.size() - 1, maxIPlusHalf + searchLen + 1));
+		if(maxIPlusHalf == -1) {
+			System.out.println("time: " + Util.getProperty("time", "null") + " maxIPlusHalf was passed the array.");
+			return -1; // Assumes there isn't a valid note being played currently.
+		}
 		double maxIPlusHalfV = fft.get(maxIPlusHalf);
 		
 		// Assuming maxI will only ever be the fundamental frequency or the harmonic above.
@@ -200,17 +204,55 @@ public class FindFrequency {
 	 * @return
 	 */
 	public List<Note> computeNotes(List<Integer> semitones, List<Note> originalNotes, List<Integer> semitonesFromNotes) {
+		Util.verify(semitones != null && semitonesFromNotes != null && semitones.size() == semitonesFromNotes.size(), "computeNotes: lists are not the same size.");
+		Util.verify(originalNotes != null && !originalNotes.isEmpty(),"computeNotes: originalNotes are empty/null");
 		List<Note> notes = new ArrayList<Note>(originalNotes);
 		notes.set(0, originalNotes.get(0));
-		Util.verify(semitones != null && semitones.size() == semitonesFromNotes.size(), "computeNotes: lists are not the same size.");
-		for(int i = 0; i < semitones.size(); i++) {
+		int testingSemitoneI = -1;
+		int numFailedInARow = 0;
+		int numCanFailInARow = 2;
+		int testingIOffset = 0;
+		List<Integer> modifiedSemitones = new ArrayList<Integer>(semitones);
+		for(int i = 0; i < modifiedSemitones.size(); i++) {
 			int currSemitone = FrequencyToNote.semitonesBetween(notes.get(i), notes.get(i + 1));
-			int offset = semitones.get(i) - semitonesFromNotes.get(i);
-			offset = semitones.get(i) - currSemitone;
+			int offset = modifiedSemitones.get(i) - semitonesFromNotes.get(i);
+			offset = modifiedSemitones.get(i) - currSemitone;
 
 			// I believe FrequencyToNote.findFrequency() should guarantee that this doesn't fail.
 			// Or maybe this might be because the fft bins are not precise enough.
 			Util.logIfFails(Math.abs(offset) < 2, "You broke music!! Semitones are more than one apart.");
+			
+	
+			if(offset != 0 && Math.abs(offset) == 1) {
+				if(Util.getProperty("lastSemitone","null").equals(("null"))) {
+					System.out.println("breaking");
+				}
+				
+				numFailedInARow++;
+				if(testingSemitoneI != -1) {
+					if(numFailedInARow > numCanFailInARow) {
+						modifiedSemitones.set(testingSemitoneI, modifiedSemitones.get(testingSemitoneI) - testingIOffset);
+						notes = notes.subList(0, testingSemitoneI + 1); // +1 because we had modified the note after the semitone difference.
+						notes.addAll(originalNotes.subList(testingSemitoneI + 1, originalNotes.size()));
+						i = testingSemitoneI - 1;
+						
+						//maybe test again // numFailedInARow = -1
+						testingSemitoneI = -1;
+						numFailedInARow = 0;
+						continue;
+					}
+				} else {
+					testingSemitoneI = i;
+					testingIOffset = offset;
+				}
+			} else if(offset != 0 && Math.abs(offset) != 1) {
+				System.out.println("Skipping testing semitone at position: " + i + " with offset: " + offset);
+			} else {
+				testingSemitoneI = -1;
+				numFailedInARow = 0;
+			}
+			
+			
 			//if(Math.abs(offset) < 2) {
 				Note note = FrequencyToNote.toNewNote(originalNotes.get(i + 1), offset);
 				notes.set(i + 1, note);

@@ -288,7 +288,7 @@ public class Graph extends BorderPane {
 //			if(data != null && !series.getData().isEmpty()) {
 				// clearData(i);
 				for(int j = begIndex; j < endIndex; j++) {
-					if(j == data.length) {
+					if(j >= data.length) {
 						break;
 					}
 					if(startZero) {

@@ -1,12 +1,16 @@
 package lbushman.audioToMIDI.processing;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import lbushman.audioToMIDI.io.TimeSignature;
 
 public class PossibleDownBeat {
 	// Modified to the most probable not the possible. We are going to get some wrong. By allowing some songs to not be right with no chance,
 	//   we are allowing more songs to be correct with a higher chance.
-	final private static int[] POSSIBLE_BTS_PER_MSURE = {2,3,4,6/*,8*/};
+	final public static Integer[] POSSIBLE_BTS_PER_MSURE = {2,3,4,6/*,8*/};
+	final private static int[] MATCHING_DENOMINATOR = {4,4,4,8};
 	final private static int MAX_BTS_A_PICKUP_MSURE = 1;/*POSSIBLE_BTS_PER_MSURE[POSSIBLE_BTS_PER_MSURE.length - 1] - 1*/; // TODO There can be a half/partial beat pickup. I think the current beat detection works for this.
 
 	private int offset;
@@ -100,5 +104,10 @@ public class PossibleDownBeat {
 	
 	public boolean equals(PossibleDownBeat pdb) {
 		return pdb.length == length && pdb.offset == offset;
+	}
+
+	public TimeSignature timeSignature() {
+		return new TimeSignature(length, 
+				MATCHING_DENOMINATOR[Arrays.asList(POSSIBLE_BTS_PER_MSURE).indexOf(length)]);
 	}
 }

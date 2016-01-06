@@ -14,9 +14,12 @@ import javax.sound.sampled.LineEvent.Type;
 import javax.sound.sampled.LineListener;
 
 import lbushman.audioToMIDI.io.CaptureAudio;
+import lbushman.audioToMIDI.io.KeySignature;
 import lbushman.audioToMIDI.io.Note;
 import lbushman.audioToMIDI.io.PlayAudio;
 import lbushman.audioToMIDI.io.ReadAudioFile;
+import lbushman.audioToMIDI.io.SheetData;
+import lbushman.audioToMIDI.io.SheetNote;
 import lbushman.audioToMIDI.io.WriteAudioFile;
 import lbushman.audioToMIDI.processing.AudioData;
 import lbushman.audioToMIDI.processing.AutoTuneNotes;
@@ -54,6 +57,7 @@ public class Main extends Application {
     AudioData audioData;
 //	private Graph acGraph;
     private Graph centerGraph;
+    private int songNumber = -1;
     
 	private Graph fftGraph;
 		
@@ -86,12 +90,26 @@ public class Main extends Application {
     	Util.timeDiff("RD");
 		ReadAudioFile audio = new ReadAudioFile(file);
 		audio.readFile();
+		setSongNumber(file);
+		
 		audioData = null;
 		audioData = new AudioData(
 				audio.getStream().toByteArray(),
 				audio.getFormat());
 		Util.timeDiff("RD");
 		processSignal(audioData, null);
+    }
+    
+    private void setSongNumber(File file) {
+		String fileName = file.getName();
+		if(fileName.contains(".wav")) {
+			fileName = fileName.replace(".wav", "");
+			try {
+				songNumber = Integer.parseInt(fileName);
+			} catch(NumberFormatException nfe) {
+				songNumber = -1;
+			}
+		}
     }
     
     private void processSignal(AudioData audioData, File file) {		
@@ -102,6 +120,7 @@ public class Main extends Application {
 		// Save the data
 		if(file != null) {
 	    	writeToFile(audioData.getSampledData(), file, audioData.getFormat());
+			setSongNumber(file);
 		}
 		Util.println("Reset2");
 		Util.timeDiff("PS");
@@ -123,9 +142,10 @@ public class Main extends Application {
 		
 		ps.process();
 		Util.timeDiff("PS");
-		moreProcessing();
+		
 		//TODO why is audioData being passed in?
 		this.audioData = audioData;
+		moreProcessing();
 		
 		//TODO ensure multiple reads resets the data appropriately. I think it is.
 		
@@ -259,7 +279,7 @@ if(false) {
 		});
 
         Label label2 = new Label("Open File:");
-        openField.setText("maryDown.wav");
+        openField.setText("3.wav");
         
         openField.textProperty().addListener(new ChangeListener<String>() {
 			@Override
@@ -591,8 +611,7 @@ if(false) {
     	int foundAttackPos = -1;
     	int lastAttackRecognized = -1;
     	final int numAhead = 4;
-    	final double percGreater = 2;
-    	boolean foundOffset = false;
+    	final double percGreater = 2.2;
     	int offset = -1;
     	boolean lookForOffset = false;
     	
@@ -620,11 +639,6 @@ if(false) {
     						if(corrValuesPerc.get(j) <= onsetValue) {
     							newOnsets.add(j);
     							lookForOffset = true;
-    							
-    		    				if(foundOffset) {
-    		    					
-    		    					foundOffset = false;
-    		    				}
     		    				didAdd = true;
     							break;
     						}
@@ -636,15 +650,10 @@ if(false) {
     					}
     					
     				}
-    				
 					if(lookForOffset && perc > /*0.017*/ 0.018/*0.04*/ ) {
 						offset = i;
-						foundOffset = true;
 					}
     				foundAttackPos = -1;
-    				//if(!foundOffset) {
-    					
-    				//}
     			}
     		}
     	}
@@ -676,9 +685,9 @@ if(false) {
         			new DD(false, corrValuesPerc, 10000, "percentages"),
         			new DD(true, attacks, 2200, "attacks"),
         			new DD(false, Arrays.asList(audioData.getAmp()), 1, "amps"),
-        			new DD(true, newOnsets, 2300, "new onsets"),
-        			new DD(true, newOffsets, 2400, "new offsets"),
-        			new DD(true, offsets, 2500, "offsets")
+        			new DD(true, newOnsets, 2300, "new onsets")
+        		//	new DD(true, newOffsets, 2400, "new offsets"),
+        		//	new DD(true, offsets, 2500, "offsets")
         	
         	
         			//new DD(true, atBases, 2300, "atBases"),
@@ -1041,19 +1050,18 @@ if(false) {
 		}
 			
 */
-//NOTES
-// Mary had a little lamb
-//Note[] actualNotes = {new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('A',null,4),new Note('A',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4)};
-//Double[] song2 = {1.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,4.0};
-
-    	
-		List<String[]> songData = ReadSongs.read(2);
-		List<Note> actualNotesList = ReadSongs.parseNotes(songData);
-		List<Double> actualDurationsList = ReadSongs.parseNoteLengths(songData);
-		Util.assertBool(actualNotesList.size() == actualDurationsList.size(), "Test file data notes and durations not same size.");
-		Note[] actualNotes = actualNotesList.toArray(new Note[actualNotesList.size()]);
-		Double[] actualDurations = actualDurationsList.toArray(new Double[actualDurationsList.size()]);
-
+    	//NOTES
+		// Default to Mary had a little lamb
+		Note[] actualNotes = {new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('A',null,4),new Note('A',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4),new Note('E',null,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('F',true,4),new Note('E',null,4),new Note('E',null,4),new Note('F',true,4),new Note('E',null,4),new Note('D',null,4)};
+		Double[] actualDurations = {1.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,4.0};
+    	if(songNumber != -1) {
+			List<String[]> songData = ReadSongs.read(songNumber);
+			List<Note> actualNotesList = ReadSongs.parseNotes(songData);
+			List<Double> actualDurationsList = ReadSongs.parseNoteLengths(songData);
+			Util.assertBool(actualNotesList.size() == actualDurationsList.size(), "Test file data notes and durations not same size.");
+			actualNotes = actualNotesList.toArray(new Note[actualNotesList.size()]);
+			actualDurations = actualDurationsList.toArray(new Double[actualDurationsList.size()]);
+    	}
 
 System.out.println(audioData.getNumFFT());
 System.out.println(audioData.getFftAbsolute().size());
@@ -1216,7 +1224,9 @@ System.out.println(audioData.getFftAbsolute().size());
 			mostFrequentSemitones.add(modes.get(0));
 		}
 		
+		Util.setProperty("lastSemitone", "lastSemitone");
 		vettedNotes.add(ff.computeNotes(mostFrequentSemitones, originalNotes, semitonesFromNotes));
+		Util.setProperty("lastSemitone", "");
 		
 		offset = 0;
 		offsetIter = offsets.listIterator();
@@ -1320,12 +1330,14 @@ System.out.println(audioData.getFftAbsolute().size());
 			double freq = modes.get(0);
 			Note note = FrequencyToNote.findNote(freq);
 			notes.add(note);
-			if(modes.size() != 1) {
-				System.out.println("\t" + i + " Too many frequency modes onset: " + onset + " offset: " + next + "should: " + actualNotes[i] +  " modes: " + modes + " freqs: " + freqs.subList(onset, next));
-			} else if (actualNotes[i].equals(note)) {
-				System.out.println("\t" + i + " Good onset: " + onset + " offset: " + next + "is: " + actualNotes[i] + " freqs: " + freqs.subList(onset, next));
-			} else {
-				System.out.println("\t" + i + " Bad onset: " + onset + " offset: " + next + "is: " + actualNotes[i] + " freqs: " + freqs.subList(onset, next));
+			if(i < actualNotes.length) {
+				if(modes.size() != 1) {
+					System.out.println("\t" + i + " Too many frequency modes onset: " + onset + " offset: " + next + "should: " + actualNotes[i] +  " modes: " + modes + " freqs: " + freqs.subList(onset, next));
+				} else if (actualNotes[i].equals(note)) {
+					System.out.println("\t" + i + " Good onset: " + onset + " offset: " + next + "is: " + actualNotes[i] + " freqs: " + freqs.subList(onset, next));
+				} else {
+					System.out.println("\t" + i + " Bad onset: " + onset + " offset: " + next + "is: " + actualNotes[i] + " freqs: " + freqs.subList(onset, next));
+				}
 			}
 		}
 		
@@ -1423,10 +1435,14 @@ System.out.println(audioData.getFftAbsolute().size());
 			easyPeasyFrequencies.add(FrequencyToNote.findFrequency(FundamentalFrequency.computeFrequency((int)(double)i, audioData)));
 		}*/
 		
+		KeySignature ks = KeySignature.deriveSignature(vettedNotes.get(vettedNotes.size() - 1));
+		System.out.println("Key Signature " + ks);
 		
 		FindDownBeat fdb = new FindDownBeat(data.noteDurations);
 		fdb.showPossibleDownBeats();
 		PossibleDownBeat pdb = fdb.getWinner();
+		
+		if(pdb != null) {
 		
 		double numOfBeats = Util.sum(data.noteDurations);
 		int numOfCurrentlyFullMeasures = (int) (numOfBeats / pdb.getLength());
@@ -1438,6 +1454,31 @@ System.out.println(audioData.getFftAbsolute().size());
 		}
 		System.out.println("Added last duration");
 		Util.compareLists(Arrays.asList(actualDurations), data.noteDurations, 4);
+		
+		
+		// Below didn't work I am wondering if findOriginalIndex is not working correctly
+/*		int start = ps.findOriginalIndex(onsets.get(0));
+		int end = ps.findOriginalIndex(onsets.get(onsets.size() - 1));
+		int numSamples = end - start;
+		double averageBeatLength = numSamples / (double) numOfBeats;
+		double beatsPerSecond = averageBeatLength / audioData.getFormat().getSampleRate();
+		int beatsPerMin = (int) Math.round(beatsPerSecond * 60);*/
+		
+		double averageNoteDuration = (onsets.get(onsets.size() - 1) - onsets.get(0) )/ (double)numOfBeats;
+		double samplesPerNote = averageNoteDuration * audioData.getFftLength();
+		double beatsPerSecond = audioData.getFormat().getSampleRate() / samplesPerNote;
+		beatsPerSecond /= audioData.getOverlapPercentage(); 
+		int beatsPerMinute = (int) Math.round(beatsPerSecond * 60);
+		
+		
+		
+		List<SheetNote> sheetNotes = SheetNote.createList(vettedNotes.get(vettedNotes.size() -1), data.noteDurations, pdb);
+		SheetData sd = new SheetData(sheetNotes, beatsPerMinute, pdb.timeSignature(), ks);
+		System.out.println(sd);
+		
+		
+		}
+		
 		
 		
 		//List<PossibleDownBeat> dbeats = fdb.returnPossibleDownBeats();

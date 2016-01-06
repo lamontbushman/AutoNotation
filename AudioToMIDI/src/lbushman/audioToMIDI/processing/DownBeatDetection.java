@@ -295,9 +295,13 @@ public class DownBeatDetection {
 				// TODO if error is too big, this might be a fermata.
 				
 				Util.verify(sei != -1, "(obo1: " + onBeatOnset1 + " obo2: " + onBeatOnset2 + "): No permutations add up to " + nBeats);
-				lengths.clear();
-				for(Integer pnli : permutedList.get(sei)) {
-					lengths.add(possibleNoteLengths[pnli]);
+				
+				if(sei != -1) {
+					for(Integer pnli : permutedList.get(sei)) {
+						lengths.add(possibleNoteLengths[pnli]);
+					}
+				} else {
+					lengths.clear();
 				}
 				
 				

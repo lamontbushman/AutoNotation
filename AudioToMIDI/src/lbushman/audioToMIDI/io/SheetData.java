@@ -78,17 +78,26 @@ public class SheetData {
 	
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-		sb.append("Beats/Minute: " + beatsPerMinute + "\n")
+		sb.append("======================================================================\n")
+		.append("Song Data\n")
+		.append("Beats/Minute: " + beatsPerMinute + "\n")
 		.append("Key Signature: " + keySignature + "\n");
 		if(timeSignature != null) {
 			sb.append("Time Signuature : " + timeSignature + "\n");
 		} else {
 			sb.append("Time Signuature : " +  timeSignatureNumerator + "/" + timeSignatureDenominator + "\n");
 		}
+		int msurCount = 0;
 		for(SheetNote note : notes) {
-			sb.append(note.toString(keySignature) + ", ");
+			if(note.getIsDownBeat() != null && note.getIsDownBeat()) {
+				msurCount++;
+				if(msurCount % 4 == 0) {
+					sb.append("\n");
+				}
+			}
+			sb.append(note.toString(keySignature) + " ");
 		}
-		
+		sb.append("\n======================================================================\n");
 		return sb.toString();
 	}
 }
